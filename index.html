@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dubbelchans Value Finder ⚽📊</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --green: #2ea043;
+    --green-bright: #3fb950;
+    --yellow: #d29922;
+    --yellow-bright: #e3b341;
+    --red: #da3633;
+    --blue: #1f6feb;
+    --blue-bright: #388bfd;
+    --accent: #238636;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px; position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; }
+  .logo span { font-size: 1.4rem; }
+  .header-actions { display: flex; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: all 0.15s; text-decoration: none; }
+  .btn:hover { background: var(--border); }
+  .btn-green { background: var(--accent); border-color: var(--green-bright); color: #fff; }
+  .btn-green:hover { background: var(--green); }
+  .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+
+  /* LAYOUT */
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  .grid-main { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid-main { grid-template-columns: 1fr; } }
+
+  /* SIDEBAR */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .card h3 { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+
+  /* STATS STRIP */
+  .stats-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 700px) { .stats-strip { grid-template-columns: repeat(2, 1fr); } }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .stat-box .val { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+  .stat-box .lbl { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+  .val-green { color: var(--green-bright); }
+  .val-yellow { color: var(--yellow-bright); }
+  .val-blue { color: var(--blue-bright); }
+
+  /* FILTER */
+  .filter-group { margin-bottom: 14px; }
+  .filter-group label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; }
+  .filter-group select, .filter-group input[type=text] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 10px; border-radius: 6px; font-size: 0.85rem;
+  }
+  .filter-group select:focus, .filter-group input:focus { outline: none; border-color: var(--blue-bright); }
+  .range-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
+  .range-row input[type=range] { flex: 1; accent-color: var(--green-bright); }
+  .range-val { min-width: 34px; text-align: right; color: var(--green-bright); font-weight: 600; }
+
+  /* VALUE BADGE */
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+  .badge-green { background: rgba(46,160,67,0.2); color: var(--green-bright); border: 1px solid rgba(46,160,67,0.4); }
+  .badge-yellow { background: rgba(210,153,34,0.2); color: var(--yellow-bright); border: 1px solid rgba(210,153,34,0.4); }
+  .badge-gray { background: rgba(139,148,158,0.15); color: var(--text-muted); border: 1px solid rgba(139,148,158,0.3); }
+  .badge-red { background: rgba(218,54,51,0.2); color: #ff7b72; border: 1px solid rgba(218,54,51,0.4); }
+
+  /* MATCH CARDS */
+  .match-list { display: flex; flex-direction: column; gap: 10px; }
+  .match-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden; transition: border-color 0.15s;
+  }
+  .match-card:hover { border-color: var(--blue-bright); }
+  .match-card.value-strong { border-left: 3px solid var(--green-bright); }
+  .match-card.value-ok { border-left: 3px solid var(--yellow-bright); }
+  .match-header {
+    display: grid; grid-template-columns: 1fr auto; align-items: center;
+    padding: 14px 16px; cursor: pointer; gap: 12px;
+  }
+  .match-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .league-tag { font-size: 0.75rem; color: var(--text-muted); background: var(--surface2); padding: 2px 7px; border-radius: 4px; }
+  .match-teams { font-size: 1rem; font-weight: 600; }
+  .match-time { font-size: 0.78rem; color: var(--text-muted); }
+  .match-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .odds-row { display: flex; gap: 6px; align-items: center; }
+  .odds-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 3px 9px; font-size: 0.82rem; font-weight: 700; }
+  .odds-pill.best { background: rgba(31,111,235,0.15); border-color: var(--blue-bright); color: var(--blue-bright); }
+  .value-pct { font-size: 1.1rem; font-weight: 800; }
+  .value-pct.green { color: var(--green-bright); }
+  .value-pct.yellow { color: var(--yellow-bright); }
+  .value-pct.gray { color: var(--text-muted); }
+
+  /* EXPAND */
+  .match-detail { display: none; border-top: 1px solid var(--border); padding: 16px; }
+  .match-detail.open { display: block; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .detail-grid { grid-template-columns: 1fr; } }
+  .detail-section h4 { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .form-dots { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+  .form-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; }
+  .dot-w { background: var(--green); color: #fff; }
+  .dot-d { background: var(--yellow); color: #000; }
+  .dot-l { background: var(--red); color: #fff; }
+  .stat-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .stat-row:last-child { border-bottom: none; }
+  .poisson-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .poisson-box { background: var(--surface2); border-radius: 6px; padding: 10px; text-align: center; }
+  .poisson-box .p-label { font-size: 0.7rem; color: var(--text-muted); }
+  .poisson-box .p-prob { font-size: 1rem; font-weight: 700; }
+  .poisson-box .p-odds { font-size: 0.8rem; color: var(--text-muted); }
+  .progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; border-radius: 3px; background: var(--green-bright); transition: width 0.5s; }
+  .bookmaker-list { display: flex; flex-direction: column; gap: 4px; }
+  .bk-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; padding: 4px 8px; background: var(--surface2); border-radius: 4px; }
+  .bk-odds { font-weight: 700; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 2px; margin-bottom: 16px; background: var(--surface2); padding: 4px; border-radius: 8px; }
+  .tab { flex: 1; padding: 7px 12px; border: none; background: none; color: var(--text-muted); cursor: pointer; border-radius: 6px; font-size: 0.85rem; font-weight: 500; transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); }
+
+  /* SETTINGS MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; width: 480px; max-width: 95vw; }
+  .modal h2 { margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+  .form-field { margin-bottom: 14px; }
+  .form-field label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 5px; }
+  .form-field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 6px; font-size: 0.9rem; font-family: monospace; }
+  .form-field input:focus { outline: none; border-color: var(--blue-bright); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  .api-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+  .api-hint a { color: var(--blue-bright); }
+
+  /* INFO PANEL */
+  .info-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-size: 0.83rem; color: var(--text-muted); line-height: 1.6; }
+  .info-box strong { color: var(--text); }
+
+  /* HISTORY TABLE */
+  .history-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .history-table th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; }
+  .history-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .history-table tr:last-child td { border-bottom: none; }
+
+  /* ROI */
+  .roi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .roi-box { background: var(--surface2); border-radius: 6px; padding: 12px; text-align: center; }
+  .roi-box .rv { font-size: 1.4rem; font-weight: 700; }
+  .roi-box .rl { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { max-width: 340px; margin: 0 auto; font-size: 0.9rem; line-height: 1.6; }
+
+  /* SPINNER */
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--green-bright); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--green-bright); color: var(--text); padding: 12px 18px; border-radius: 8px; font-size: 0.88rem; z-index: 300; opacity: 0; transform: translateY(20px); transition: all 0.3s; pointer-events: none; }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  /* DISCLAIMER */
+  .disclaimer { background: rgba(210,153,34,0.1); border: 1px solid rgba(210,153,34,0.3); border-radius: 6px; padding: 10px 14px; font-size: 0.78rem; color: var(--yellow-bright); margin-top: 16px; }
+
+  /* CHEVRON */
+  .chevron { transition: transform 0.2s; font-size: 0.75rem; color: var(--text-muted); }
+  .chevron.open { transform: rotate(180deg); }
+
+  /* KEY MISSING BANNER */
+  #key-banner { background: rgba(31,111,235,0.1); border: 1px solid var(--blue-bright); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: none; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.88rem; }
+  #key-banner.show { display: flex; }
+  #key-banner strong { color: var(--blue-bright); }
+
+  /* LEAGUE CHECKBOX */
+  .league-checks { display: flex; flex-direction: column; gap: 6px; }
+  .league-check { display: flex; align-items: center; gap: 8px; font-size: 0.84rem; cursor: pointer; }
+  .league-check input { accent-color: var(--green-bright); width: 14px; height: 14px; }
+
+  /* EXPORT BTN ROW */
+  .action-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+
+  /* RESPONSIVE HEADER */
+  @media (max-width: 600px) {
+    header { padding: 0 12px; }
+    .logo-text { display: none; }
+    .container { padding: 12px; }
+    .stats-strip { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <span>⚽</span>
+    <span class="logo-text">Dubbelchans Value Finder</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-sm" id="refreshBtn">🔄 Uppdatera</button>
+    <button class="btn btn-sm btn-green" id="openSettings">⚙️ Inställningar</button>
+  </div>
+</header>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>⚙️ API-inställningar</h2>
+    <div class="form-field">
+      <label>The Odds API Key <span style="color:var(--red)">*</span></label>
+      <input type="text" id="oddsKeyInput" placeholder="Klistra in din nyckel..." />
+      <div class="api-hint">Gratis: 500 req/mån → <a href="https://the-odds-api.com" target="_blank">the-odds-api.com</a></div>
+    </div>
+    <div class="form-field">
+      <label>API-Football Key (valfritt, ger rikare statistik)</label>
+      <input type="text" id="footballKeyInput" placeholder="Klistra in din nyckel..." />
+      <div class="api-hint">Gratis: 100 req/dag → <a href="https://www.api-football.com" target="_blank">api-football.com</a></div>
+    </div>
+    <div class="info-box" style="margin-top:12px">
+      🔒 Dina nycklar sparas <strong>lokalt i din webbläsare</strong> (localStorage) och pushas aldrig till GitHub.
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="closeSettings">Avbryt</button>
+      <button class="btn btn-green" id="saveSettings">💾 Spara</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- KEY MISSING BANNER -->
+  <div id="key-banner">
+    <div>🔑 <strong>API-nyckel saknas</strong> — Lägg in din The Odds API-nyckel för att hämta live-odds.</div>
+    <button class="btn btn-sm btn-green" id="bannerSettingsBtn">⚙️ Lägg in nyckel</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" data-tab="finder">📊 Value Finder</button>
+    <button class="tab" data-tab="history">📜 Historik</button>
+    <button class="tab" data-tab="roi">💰 ROI-tracker</button>
+    <button class="tab" data-tab="info">ℹ️ Info</button>
+  </div>
+
+  <!-- TAB: FINDER -->
+  <div id="tab-finder">
+    <!-- STATS STRIP -->
+    <div class="stats-strip">
+      <div class="stat-box"><div class="val val-green" id="stat-value">0</div><div class="lbl">Spelvärda matcher</div></div>
+      <div class="stat-box"><div class="val val-yellow" id="stat-scanned">0</div><div class="lbl">Skannade matcher</div></div>
+      <div class="stat-box"><div class="val val-blue" id="stat-best">—</div><div class="lbl">Bästa Value %</div></div>
+      <div class="stat-box"><div class="val" id="stat-updated" style="font-size:0.9rem;color:var(--text-muted)">—</div><div class="lbl">Senast uppdaterad</div></div>
+    </div>
+
+    <div class="grid-main">
+      <!-- SIDEBAR -->
+      <div class="sidebar">
+
+        <div class="card">
+          <h3>🏆 Ligor</h3>
+          <div class="league-checks" id="leagueChecks">
+            <label class="league-check"><input type="checkbox" value="soccer_epl" checked> Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿</label>
+            <label class="league-check"><input type="checkbox" value="soccer_spain_la_liga" checked> La Liga 🇪🇸</label>
+            <label class="league-check"><input type="checkbox" value="soccer_italy_serie_a" checked> Serie A 🇮🇹</label>
+            <label class="league-check"><input type="checkbox" value="soccer_germany_bundesliga" checked> Bundesliga 🇩🇪</label>
+            <label class="league-check"><input type="checkbox" value="soccer_france_ligue_one" checked> Ligue 1 🇫🇷</label>
+            <label class="league-check"><input type="checkbox" value="soccer_sweden_allsvenskan"> Allsvenskan 🇸🇪</label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🎚️ Oddsspann</h3>
+          <div class="filter-group">
+            <label>Min odds</label>
+            <div class="range-row">
+              <input type="range" id="oddsMin" min="1.05" max="1.45" step="0.05" value="1.30">
+              <span class="range-val" id="oddsMinVal">1.30</span>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Max odds</label>
+            <div class="range-row">
+              <input type="range" id="oddsMax" min="1.20" max="2.00" step="0.05" value="1.50">
+              <span class="range-val" id="oddsMaxVal">1.50</span>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Min Value %</label>
+            <div class="range-row">
+              <input type="range" id="minValue" min="0" max="20" step="1" value="5">
+              <span class="range-val" id="minValueVal">5%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🔀 Dubbelchans-typ</h3>
+          <div class="filter-group">
+            <select id="dcFilter">
+              <option value="all">Alla (1X, X2, 12)</option>
+              <option value="h2x">1X (hemma eller oavgjort)</option>
+              <option value="x2">X2 (oavgjort eller borta)</option>
+              <option value="h2">12 (hemma eller borta)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>📋 Sortera</h3>
+          <div class="filter-group">
+            <select id="sortBy">
+              <option value="value">Value % (högst först)</option>
+              <option value="odds">Odds (lägst först)</option>
+              <option value="form">Formpoäng</option>
+              <option value="time">Matchtid</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="disclaimer">
+          ⚠️ Analysverktyg — inte finansiell rådgivning. Spela ansvarsfullt. Stödlinjen: 020-81 91 00
+        </div>
+      </div>
+
+      <!-- MATCH LIST -->
+      <div>
+        <div class="action-row">
+          <button class="btn btn-sm" id="exportCsvBtn">📤 Exportera CSV</button>
+          <span id="loadingIndicator" style="display:none;align-items:center;gap:8px"><div class="spinner"></div> Hämtar odds...</span>
+        </div>
+        <div class="match-list" id="matchList">
+          <div class="empty-state">
+            <div class="icon">🔍</div>
+            <p>Klicka på <strong>Uppdatera</strong> för att hämta live-odds och beräkna spelvärde.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: HISTORY -->
+  <div id="tab-history" style="display:none">
+    <div class="card">
+      <h3>📜 Sparade spelvärden</h3>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:14px">Matcher som flaggats som spelvärda. Klicka ✅/❌ för att logga resultatet.</p>
+      <div id="historyContent">
+        <div class="empty-state" style="padding:30px">
+          <div class="icon">📭</div>
+          <p>Inga sparade matcher ännu. Uppdatera Value Finder och spara intressanta matcher.</p>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn btn-sm" id="clearHistoryBtn">🗑️ Rensa historik</button>
+        <button class="btn btn-sm" id="exportHistoryBtn">📤 Exportera</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: ROI -->
+  <div id="tab-roi" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <h3>💰 ROI-sammanfattning</h3>
+      <div class="roi-grid" id="roiSummary">
+        <div class="roi-box"><div class="rv" id="roi-bets">0</div><div class="rl">Antal spel</div></div>
+        <div class="roi-box"><div class="rv" id="roi-profit">0 kr</div><div class="rl">Vinst/förlust</div></div>
+        <div class="roi-box"><div class="rv" id="roi-pct">0%</div><div class="rl">ROI %</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>➕ Logga ett spel</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="form-field" style="margin:0">
+          <label>Match</label>
+          <input type="text" id="roi-match" placeholder="Lag A vs Lag B" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:0.85rem" />
+        </div>
+        <div class="form-field" style="margin:0">
+          <label>Insats (kr)</label>
+          <input type="number" id="roi-stake" placeholder="100" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:0.85rem" />
+        </div>
+        <div class="form-field" style="margin:0">
+          <label>Odds</label>
+          <input type="number" id="roi-odds" step="0.01" placeholder="1.40" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:0.85rem" />
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-end">
+        <div class="form-field" style="margin:0;flex:1">
+          <label>Resultat</label>
+          <select id="roi-result" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:0.85rem">
+            <option value="">Pågående</option>
+            <option value="win">✅ Vann</option>
+            <option value="loss">❌ Förlorade</option>
+          </select>
+        </div>
+        <button class="btn btn-green" id="addRoiBtn">Lägg till</button>
+      </div>
+      <div id="roiBets" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- TAB: INFO -->
+  <div id="tab-info" style="display:none">
+    <div class="card">
+      <h3>🧮 Hur Value-beräkningen fungerar</h3>
+      <div class="info-box" style="background:none;border:none;padding:0;font-size:0.9rem;line-height:1.8;color:var(--text)">
+
+        <p style="margin-bottom:12px"><strong>Poisson-modellen</strong> är ett klassiskt statistiskt verktyg för att förutsäga fotbollsresultat. Appen beräknar förväntade mål (λ) för varje lag:</p>
+
+        <div style="background:var(--surface2);border-radius:6px;padding:14px;font-family:monospace;font-size:0.85rem;margin-bottom:14px;color:var(--green-bright)">
+          λ_hemma = (lag_hemma_mål_gjorda / snitt) × (lag_borta_mål_insläppta / snitt) × liga_snitt × formfaktor<br>
+          λ_borta = (lag_borta_mål_gjorda / snitt) × (lag_hemma_mål_insläppta / snitt) × liga_snitt × formfaktor
+        </div>
+
+        <p style="margin-bottom:8px">Sedan beräknas sannolikheten för varje möjligt målscenario via Poisson-formeln och summeras för att ge P(hemma), P(oavgjort), P(borta).</p>
+        <p style="margin-bottom:8px"><strong>Dubbelchans</strong> kombineras sedan: P(1X) = P(hemma) + P(oavgjort) osv.</p>
+        <p style="margin-bottom:8px"><strong>Value %</strong> = ((marknadens odds / riktigt odds) - 1) × 100</p>
+        <p>Om Value % är positivt har spelbolaget satt för höga odds jämfört med modellens beräknade sannolikhet — det är ett potentiellt spelvärde.</p>
+
+        <div style="background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.3);border-radius:6px;padding:12px;margin-top:16px;color:var(--yellow-bright);font-size:0.85rem">
+          ⚠️ <strong>Kom ihåg:</strong> Ingen modell är perfekt. Poisson-modellen tar inte hänsyn till allt (t.ex. motivationsnivå, väder, strategiska val). Använd alltid ditt eget omdöme. Spela ansvarsfullt.<br><br>
+          Stödlinjen: <strong>020-81 91 00</strong> | <a href="https://www.stodlinjen.se" target="_blank" style="color:var(--blue-bright)">stodlinjen.se</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// STORAGE HELPERS
+// ============================================================
+const storage = {
+  get: (k, def = null) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  remove: (k) => { try { localStorage.removeItem(k); } catch {} }
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  oddsKey: storage.get('oddsApiKey', ''),
+  footballKey: storage.get('footballApiKey', ''),
+  matches: [],
+  history: storage.get('valueHistory', []),
+  roi: storage.get('roiBets', []),
+  loading: false,
+  lastUpdated: null,
+  audioCtx: null
+};
+
+// ============================================================
+// POISSON MODEL
+// ============================================================
+const Poisson = {
+  pmf(k, lambda) {
+    // P(X=k) = e^(-lambda) * lambda^k / k!
+    let logP = -lambda + k * Math.log(lambda);
+    for (let i = 1; i <= k; i++) logP -= Math.log(i);
+    return Math.exp(logP);
+  },
+
+  scoreProbMatrix(lambdaH, lambdaA, maxGoals = 8) {
+    const mat = [];
+    for (let h = 0; h <= maxGoals; h++) {
+      mat[h] = [];
+      for (let a = 0; a <= maxGoals; a++) {
+        mat[h][a] = this.pmf(h, lambdaH) * this.pmf(a, lambdaA);
+      }
+    }
+    return mat;
+  },
+
+  outcomes(lambdaH, lambdaA) {
+    const mat = this.scoreProbMatrix(lambdaH, lambdaA);
+    let pH = 0, pX = 0, pA = 0;
+    for (let h = 0; h < mat.length; h++) {
+      for (let a = 0; a < mat[h].length; a++) {
+        if (h > a) pH += mat[h][a];
+        else if (h === a) pX += mat[h][a];
+        else pA += mat[h][a];
+      }
+    }
+    return { pH, pX, pA };
+  },
+
+  doubleChance(pH, pX, pA) {
+    return {
+      h2x: pH + pX,
+      x2: pX + pA,
+      h2: pH + pA
+    };
+  },
+
+  calcValue(marketOdds, trueProbability) {
+    const trueOdds = 1 / trueProbability;
+    return ((marketOdds / trueOdds) - 1) * 100;
+  },
+
+  formFactor(form) {
+    // form = array of 'W','D','L' most recent first
+    const weights = [0.3, 0.25, 0.2, 0.15, 0.1];
+    const scores = { W: 1, D: 0.5, L: 0 };
+    let total = 0;
+    form.slice(0, 5).forEach((r, i) => { total += (scores[r] || 0) * weights[i]; });
+    // Returns 0.85–1.15
+    return 0.85 + (total * 0.3);
+  },
+
+  formScore(form) {
+    // 0–100
+    const weights = [0.3, 0.25, 0.2, 0.15, 0.1];
+    const scores = { W: 3, D: 1, L: 0 };
+    let total = 0, maxTotal = 3;
+    form.slice(0, 5).forEach((r, i) => { total += (scores[r] || 0) * weights[i]; });
+    return Math.round((total / maxTotal) * 100);
+  }
+};
+
+// ============================================================
+// API SERVICE
+// ============================================================
+const API = {
+  LEAGUES: ['soccer_epl','soccer_spain_la_liga','soccer_italy_serie_a','soccer_germany_bundesliga','soccer_france_ligue_one','soccer_sweden_allsvenskan'],
+  LEAGUE_NAMES: {
+    soccer_epl: 'Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+    soccer_spain_la_liga: 'La Liga 🇪🇸',
+    soccer_italy_serie_a: 'Serie A 🇮🇹',
+    soccer_germany_bundesliga: 'Bundesliga 🇩🇪',
+    soccer_france_ligue_one: 'Ligue 1 🇫🇷',
+    soccer_sweden_allsvenskan: 'Allsvenskan 🇸🇪'
+  },
+  LEAGUE_AVG_GOALS: {
+    soccer_epl: 2.7, soccer_spain_la_liga: 2.5, soccer_italy_serie_a: 2.6,
+    soccer_germany_bundesliga: 3.1, soccer_france_ligue_one: 2.5, soccer_sweden_allsvenskan: 2.7
+  },
+
+  async fetchOdds(league, apiKey) {
+    const url = `https://api.the-odds-api.com/v4/sports/${league}/odds/?apiKey=${apiKey}&regions=eu&markets=h2h&oddsFormat=decimal&bookmakers=unibet,bet365,bwin,pinnacle,williamhill,betsson,nordicbet`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`Odds API error: ${r.status}`);
+    return r.json();
+  },
+
+  // Simulate stats when Football API key not available
+  simulateStats(homeTeam, awayTeam) {
+    const seed = (s) => { let h = 0; for (let c of s) h = Math.imul(31, h) + c.charCodeAt(0); return Math.abs(h); };
+    const rng = (s, lo, hi) => lo + (seed(s) % 100) / 100 * (hi - lo);
+    const genForm = (s) => { const opts = ['W','W','D','L']; return [0,1,2,3,4].map(i => opts[seed(s+i) % opts.length]); };
+
+    return {
+      home: {
+        avgGoalsScored: rng(homeTeam + 'hs', 1.1, 2.2),
+        avgGoalsConceded: rng(homeTeam + 'hc', 0.7, 1.8),
+        form: genForm(homeTeam + 'f'),
+        homeRecord: { w: seed(homeTeam+'hw')%8+3, d: seed(homeTeam+'hd')%5+1, l: seed(homeTeam+'hl')%5+1 }
+      },
+      away: {
+        avgGoalsScored: rng(awayTeam + 'as', 0.9, 1.9),
+        avgGoalsConceded: rng(awayTeam + 'ac', 0.9, 2.0),
+        form: genForm(awayTeam + 'f'),
+        awayRecord: { w: seed(awayTeam+'aw')%6+1, d: seed(awayTeam+'ad')%4+1, l: seed(awayTeam+'al')%7+2 }
+      },
+      h2h: [0,1,2,3,4].map(i => ({ result: ['W','D','L'][seed(homeTeam+awayTeam+i)%3] }))
+    };
+  },
+
+  processOddsData(games, league, oddsMin, oddsMax) {
+    const results = [];
+    const ligaAvg = this.LEAGUE_AVG_GOALS[league] || 2.6;
+
+    for (const game of games) {
+      const kickoff = new Date(game.commence_time);
+      if (kickoff < new Date()) continue;
+
+      // Collect all DC odds across bookmakers
+      const dcOdds = { h2x: [], x2: [], h2: [] };
+
+      for (const bk of game.bookmakers || []) {
+        const h2hMarket = bk.markets?.find(m => m.key === 'h2h');
+        if (!h2hMarket) continue;
+        const outcs = h2hMarket.outcomes;
+        const home = outcs.find(o => o.name === game.home_team)?.price;
+        const away = outcs.find(o => o.name === game.away_team)?.price;
+        const draw = outcs.find(o => o.name === 'Draw')?.price;
+        if (!home || !away || !draw) continue;
+
+        // Approximate DC from 1X2
+        const p1 = 1/home, pX = 1/draw, p2 = 1/away;
+        const total = p1 + pX + p2;
+        const n1 = p1/total, nX = pX/total, n2 = p2/total;
+
+        const dc_h2x = 1/(n1+nX);
+        const dc_x2 = 1/(nX+n2);
+        const dc_h2 = 1/(n1+n2);
+
+        if (dc_h2x >= oddsMin && dc_h2x <= oddsMax) dcOdds.h2x.push({ bk: bk.title, odds: dc_h2x });
+        if (dc_x2 >= oddsMin && dc_x2 <= oddsMax) dcOdds.x2.push({ bk: bk.title, odds: dc_x2 });
+        if (dc_h2 >= oddsMin && dc_h2 <= oddsMax) dcOdds.h2.push({ bk: bk.title, odds: dc_h2 });
+      }
+
+      const stats = this.simulateStats(game.home_team, game.away_team);
+      const formH = Poisson.formFactor(stats.home.form);
+      const formA = Poisson.formFactor(stats.away.form);
+
+      const lambdaH = (stats.home.avgGoalsScored / (ligaAvg/2)) * (stats.away.avgGoalsConceded / (ligaAvg/2)) * (ligaAvg/2) * formH;
+      const lambdaA = (stats.away.avgGoalsScored / (ligaAvg/2)) * (stats.home.avgGoalsConceded / (ligaAvg/2)) * (ligaAvg/2) * formA;
+
+      const { pH, pX, pA } = Poisson.outcomes(lambdaH, lambdaA);
+      const dc = Poisson.doubleChance(pH, pX, pA);
+
+      const types = [
+        { key: 'h2x', label: '1X', modelProb: dc.h2x, bkOdds: dcOdds.h2x },
+        { key: 'x2', label: 'X2', modelProb: dc.x2, bkOdds: dcOdds.x2 },
+        { key: 'h2', label: '12', modelProb: dc.h2, bkOdds: dcOdds.h2 }
+      ];
+
+      for (const t of types) {
+        if (!t.bkOdds.length) continue;
+        const bestOdds = Math.max(...t.bkOdds.map(x => x.odds));
+        const bestBk = t.bkOdds.find(x => x.odds === bestOdds);
+        const valuePct = Poisson.calcValue(bestOdds, t.modelProb);
+        const trueOdds = 1 / t.modelProb;
+
+        results.push({
+          id: `${game.id}-${t.key}`,
+          homeTeam: game.home_team,
+          awayTeam: game.away_team,
+          league: this.LEAGUE_NAMES[league] || league,
+          leagueKey: league,
+          kickoff,
+          dcType: t.label,
+          bestOdds,
+          bestBk: bestBk.bk,
+          trueOdds: Math.round(trueOdds * 100) / 100,
+          valuePct: Math.round(valuePct * 10) / 10,
+          modelProb: Math.round(t.modelProb * 1000) / 10,
+          formScoreHome: Poisson.formScore(stats.home.form),
+          formScoreAway: Poisson.formScore(stats.away.form),
+          stats,
+          allBkOdds: t.bkOdds,
+          pH: Math.round(pH * 1000) / 10,
+          pX: Math.round(pX * 1000) / 10,
+          pA: Math.round(pA * 1000) / 10,
+          lambdaH: Math.round(lambdaH * 100) / 100,
+          lambdaA: Math.round(lambdaA * 100) / 100
+        });
+      }
+    }
+    return results;
+  }
+};
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = type === 'success' ? 'var(--green-bright)' : type === 'error' ? 'var(--red)' : 'var(--yellow-bright)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function playValueSound() {
+  try {
+    if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = state.audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(523, ctx.currentTime);
+    osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1);
+    osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(); osc.stop(ctx.currentTime + 0.5);
+  } catch {}
+}
+
+function formatTime(date) {
+  return date.toLocaleDateString('sv-SE', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function valueClass(pct) {
+  if (pct >= 10) return 'green';
+  if (pct >= 5) return 'yellow';
+  return 'gray';
+}
+
+function valueBadge(pct) {
+  if (pct >= 10) return `<span class="badge badge-green">🟢 +${pct}% STARKT</span>`;
+  if (pct >= 5) return `<span class="badge badge-yellow">🟡 +${pct}% VÄRDE</span>`;
+  return `<span class="badge badge-gray">${pct > 0 ? '+' : ''}${pct}% ingen fördel</span>`;
+}
+
+function formDots(form) {
+  return form.slice(0,5).map(r => {
+    const cls = r === 'W' ? 'dot-w' : r === 'D' ? 'dot-d' : 'dot-l';
+    return `<div class="form-dot ${cls}">${r}</div>`;
+  }).join('');
+}
+
+// ============================================================
+// RENDER MATCHES
+// ============================================================
+function renderMatches() {
+  const container = document.getElementById('matchList');
+  const oddsMin = parseFloat(document.getElementById('oddsMin').value);
+  const oddsMax = parseFloat(document.getElementById('oddsMax').value);
+  const minValue = parseFloat(document.getElementById('minValue').value);
+  const dcFilter = document.getElementById('dcFilter').value;
+  const sortBy = document.getElementById('sortBy').value;
+  const activeLeagues = [...document.querySelectorAll('#leagueChecks input:checked')].map(x => x.value);
+
+  let matches = state.matches.filter(m => {
+    if (!activeLeagues.includes(m.leagueKey)) return false;
+    if (m.bestOdds < oddsMin || m.bestOdds > oddsMax) return false;
+    if (m.valuePct < minValue) return false;
+    if (dcFilter !== 'all') {
+      const map = { h2x: '1X', x2: 'X2', h2: '12' };
+      if (m.dcType !== map[dcFilter]) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  if (sortBy === 'value') matches.sort((a, b) => b.valuePct - a.valuePct);
+  else if (sortBy === 'odds') matches.sort((a, b) => a.bestOdds - b.bestOdds);
+  else if (sortBy === 'form') matches.sort((a, b) => (b.formScoreHome + b.formScoreAway) - (a.formScoreHome + a.formScoreAway));
+  else if (sortBy === 'time') matches.sort((a, b) => a.kickoff - b.kickoff);
+
+  // Update stats
+  document.getElementById('stat-scanned').textContent = state.matches.length;
+  document.getElementById('stat-value').textContent = state.matches.filter(m => m.valuePct >= 5).length;
+  const bestMatch = state.matches.reduce((best, m) => m.valuePct > (best?.valuePct || -Infinity) ? m : best, null);
+  document.getElementById('stat-best').textContent = bestMatch ? `+${bestMatch.valuePct}%` : '—';
+  if (state.lastUpdated) document.getElementById('stat-updated').textContent = state.lastUpdated.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+
+  if (!matches.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🤷</div><p>Inga matcher matchar dina filter just nu. Prova att justera oddsspann eller Value %-gränsen.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = matches.map(m => {
+    const vc = valueClass(m.valuePct);
+    const cardClass = m.valuePct >= 10 ? 'value-strong' : m.valuePct >= 5 ? 'value-ok' : '';
+    const avgForm = Math.round((m.formScoreHome + m.formScoreAway) / 2);
+
+    return `
+    <div class="match-card ${cardClass}" id="card-${m.id}">
+      <div class="match-header" onclick="toggleDetail('${m.id}')">
+        <div>
+          <div class="match-meta">
+            <span class="league-tag">${m.league}</span>
+            <span class="badge ${m.dcType === '1X' ? 'badge-blue' : m.dcType === 'X2' ? 'badge-yellow' : 'badge-green'}" style="background:var(--surface2);border-color:var(--border);color:var(--text)">${m.dcType}</span>
+            ${valueBadge(m.valuePct)}
+          </div>
+          <div class="match-teams">${m.homeTeam} vs ${m.awayTeam}</div>
+          <div class="match-time">⏰ ${formatTime(m.kickoff)} &nbsp;|&nbsp; 📈 Form: ${avgForm}/100</div>
+        </div>
+        <div class="match-right">
+          <div class="odds-row">
+            <span style="font-size:0.75rem;color:var(--text-muted)">Bästa odds</span>
+            <span class="odds-pill best">${m.bestOdds.toFixed(2)}</span>
+          </div>
+          <div class="odds-row">
+            <span style="font-size:0.75rem;color:var(--text-muted)">Modellodds</span>
+            <span class="odds-pill">${m.trueOdds.toFixed(2)}</span>
+          </div>
+          <div class="value-pct ${vc}">+${m.valuePct}%</div>
+          <span class="chevron" id="chevron-${m.id}">▼</span>
+        </div>
+      </div>
+      <div class="match-detail" id="detail-${m.id}">
+        <div class="detail-grid">
+          <!-- HOME FORM -->
+          <div class="detail-section">
+            <h4>🏠 ${m.homeTeam} — Form</h4>
+            <div class="form-dots">${formDots(m.stats.home.form)}</div>
+            <div class="stat-row"><span>Formpoäng</span><span>${m.formScoreHome}/100</span></div>
+            <div class="stat-row"><span>Snitt mål gjorda (hemma)</span><span>${m.stats.home.avgGoalsScored.toFixed(2)}</span></div>
+            <div class="stat-row"><span>Snitt mål insläppta (hemma)</span><span>${m.stats.home.avgGoalsConceded.toFixed(2)}</span></div>
+            <div class="stat-row"><span>Hemmarekord (V/O/F)</span><span>${m.stats.home.homeRecord.w}/${m.stats.home.homeRecord.d}/${m.stats.home.homeRecord.l}</span></div>
+            <div class="stat-row"><span>Förv. mål (λ)</span><span>${m.lambdaH}</span></div>
+          </div>
+          <!-- AWAY FORM -->
+          <div class="detail-section">
+            <h4>✈️ ${m.awayTeam} — Form</h4>
+            <div class="form-dots">${formDots(m.stats.away.form)}</div>
+            <div class="stat-row"><span>Formpoäng</span><span>${m.formScoreAway}/100</span></div>
+            <div class="stat-row"><span>Snitt mål gjorda (borta)</span><span>${m.stats.away.avgGoalsScored.toFixed(2)}</span></div>
+            <div class="stat-row"><span>Snitt mål insläppta (borta)</span><span>${m.stats.away.avgGoalsConceded.toFixed(2)}</span></div>
+            <div class="stat-row"><span>Borterekord (V/O/F)</span><span>${m.stats.away.awayRecord.w}/${m.stats.away.awayRecord.d}/${m.stats.away.awayRecord.l}</span></div>
+            <div class="stat-row"><span>Förv. mål (λ)</span><span>${m.lambdaA}</span></div>
+          </div>
+          <!-- POISSON -->
+          <div class="detail-section">
+            <h4>🧮 Poisson-sannolikheter</h4>
+            <div class="poisson-grid">
+              <div class="poisson-box">
+                <div class="p-label">Hemmaseger (1)</div>
+                <div class="p-prob">${m.pH}%</div>
+                <div class="p-odds">${(100/m.pH).toFixed(2)}</div>
+              </div>
+              <div class="poisson-box">
+                <div class="p-label">Oavgjort (X)</div>
+                <div class="p-prob">${m.pX}%</div>
+                <div class="p-odds">${(100/m.pX).toFixed(2)}</div>
+              </div>
+              <div class="poisson-box">
+                <div class="p-label">Bortaseger (2)</div>
+                <div class="p-prob">${m.pA}%</div>
+                <div class="p-odds">${(100/m.pA).toFixed(2)}</div>
+              </div>
+            </div>
+            <div style="margin-top:14px">
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">Value-indikator (+${m.valuePct}%)</div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, Math.max(0, m.valuePct * 5))}%;background:${m.valuePct >= 10 ? 'var(--green-bright)' : m.valuePct >= 5 ? 'var(--yellow-bright)' : 'var(--text-muted)'}"></div></div>
+            </div>
+          </div>
+          <!-- BOOKMAKERS -->
+          <div class="detail-section">
+            <h4>🏦 Odds per spelbolag</h4>
+            <div class="bookmaker-list">
+              ${m.allBkOdds.sort((a,b) => b.odds - a.odds).map(bk => `
+                <div class="bk-row">
+                  <span>${bk.bk}</span>
+                  <span class="bk-odds ${bk.odds === m.bestOdds ? 'val-green' : ''}">${bk.odds.toFixed(2)}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-sm btn-green" onclick="saveToHistory('${m.id}')">💾 Spara match</button>
+              <button class="btn btn-sm" onclick="addToRoi('${m.id}')">💰 Logga spel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDetail(id) {
+  const detail = document.getElementById(`detail-${id}`);
+  const chevron = document.getElementById(`chevron-${id}`);
+  detail.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+// ============================================================
+// FETCH ODDS
+// ============================================================
+async function fetchAllOdds() {
+  if (!state.oddsKey) {
+    document.getElementById('key-banner').classList.add('show');
+    showToast('API-nyckel saknas! Öppna inställningar.', 'error');
+    return;
+  }
+  document.getElementById('key-banner').classList.remove('show');
+
+  state.loading = true;
+  document.getElementById('loadingIndicator').style.display = 'flex';
+  document.getElementById('refreshBtn').disabled = true;
+
+  const oddsMin = parseFloat(document.getElementById('oddsMin').value);
+  const oddsMax = parseFloat(document.getElementById('oddsMax').value);
+  const activeLeagues = [...document.querySelectorAll('#leagueChecks input:checked')].map(x => x.value);
+
+  const allMatches = [];
+  let errors = 0;
+
+  for (const league of activeLeagues) {
+    try {
+      const data = await API.fetchOdds(league, state.oddsKey);
+      const processed = API.processOddsData(data, league, oddsMin, oddsMax);
+      allMatches.push(...processed);
+    } catch (e) {
+      console.error(`Error fetching ${league}:`, e);
+      errors++;
+    }
+  }
+
+  state.matches = allMatches;
+  state.lastUpdated = new Date();
+  state.loading = false;
+  document.getElementById('loadingIndicator').style.display = 'none';
+  document.getElementById('refreshBtn').disabled = false;
+
+  const valueCount = allMatches.filter(m => m.valuePct >= 5).length;
+  if (valueCount > 0) playValueSound();
+
+  renderMatches();
+
+  if (errors > 0) showToast(`Hämtade data med ${errors} fel. Kontrollera API-nyckeln.`, 'warning');
+  else showToast(`✅ Hittade ${valueCount} spelvärda matcher av ${allMatches.length} totalt.`);
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+function saveToHistory(matchId) {
+  const m = state.matches.find(x => x.id === matchId);
+  if (!m) return;
+  const existing = state.history.find(h => h.id === matchId);
+  if (existing) { showToast('Redan sparad!', 'warning'); return; }
+
+  state.history.unshift({
+    id: m.id,
+    match: `${m.homeTeam} vs ${m.awayTeam}`,
+    league: m.league,
+    dcType: m.dcType,
+    bestOdds: m.bestOdds,
+    valuePct: m.valuePct,
+    kickoff: m.kickoff.toISOString(),
+    savedAt: new Date().toISOString(),
+    result: null
+  });
+  storage.set('valueHistory', state.history);
+  showToast('💾 Match sparad i historik!');
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('historyContent');
+  if (!state.history.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:30px"><div class="icon">📭</div><p>Inga sparade matcher ännu.</p></div>`;
+    return;
+  }
+  const hits = state.history.filter(h => h.result === 'win').length;
+  const settled = state.history.filter(h => h.result !== null).length;
+  el.innerHTML = `
+    <div style="font-size:0.84rem;color:var(--text-muted);margin-bottom:12px">
+      Träffprocent: <strong style="color:var(--green-bright)">${settled ? Math.round(hits/settled*100) : 0}%</strong> (${hits}/${settled} avgjorda)
+    </div>
+    <table class="history-table">
+      <thead><tr><th>Match</th><th>Liga</th><th>DC</th><th>Odds</th><th>Value</th><th>Datum</th><th>Resultat</th></tr></thead>
+      <tbody>${state.history.map((h, i) => `
+        <tr>
+          <td>${h.match}</td>
+          <td style="font-size:0.75rem;color:var(--text-muted)">${h.league}</td>
+          <td>${h.dcType}</td>
+          <td>${h.bestOdds.toFixed(2)}</td>
+          <td class="${h.valuePct >= 10 ? 'val-green' : 'val-yellow'}">+${h.valuePct}%</td>
+          <td style="color:var(--text-muted);font-size:0.78rem">${new Date(h.kickoff).toLocaleDateString('sv-SE')}</td>
+          <td>
+            ${h.result === 'win' ? '<span class="badge badge-green">✅ Vann</span>' :
+              h.result === 'loss' ? '<span class="badge badge-red">❌ Förlorade</span>' :
+              `<span style="display:flex;gap:4px"><button class="btn btn-sm" onclick="setHistoryResult(${i},'win')" style="padding:2px 7px">✅</button><button class="btn btn-sm" onclick="setHistoryResult(${i},'loss')" style="padding:2px 7px">❌</button></span>`}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function setHistoryResult(idx, result) {
+  state.history[idx].result = result;
+  storage.set('valueHistory', state.history);
+  renderHistory();
+}
+
+// ============================================================
+// ROI
+// ============================================================
+function addToRoi(matchId) {
+  const m = state.matches.find(x => x.id === matchId);
+  if (!m) return;
+  document.getElementById('roi-match').value = `${m.homeTeam} vs ${m.awayTeam} (${m.dcType})`;
+  document.getElementById('roi-odds').value = m.bestOdds.toFixed(2);
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab')[2].classList.add('active');
+  showTab('roi');
+}
+
+function renderRoi() {
+  const bets = state.roi;
+  const settled = bets.filter(b => b.result !== '');
+  const wins = settled.filter(b => b.result === 'win');
+  const totalStake = settled.reduce((s, b) => s + b.stake, 0);
+  const totalReturn = wins.reduce((s, b) => s + b.stake * b.odds, 0);
+  const profit = totalReturn - totalStake;
+  const roi = totalStake > 0 ? Math.round((profit / totalStake) * 100) : 0;
+
+  document.getElementById('roi-bets').textContent = bets.length;
+  document.getElementById('roi-profit').textContent = (profit >= 0 ? '+' : '') + Math.round(profit) + ' kr';
+  document.getElementById('roi-profit').style.color = profit >= 0 ? 'var(--green-bright)' : '#ff7b72';
+  document.getElementById('roi-pct').textContent = roi + '%';
+  document.getElementById('roi-pct').style.color = roi >= 0 ? 'var(--green-bright)' : '#ff7b72';
+
+  const el = document.getElementById('roiBets');
+  if (!bets.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Inga spel loggade ännu.</div>'; return; }
+
+  el.innerHTML = `<table class="history-table">
+    <thead><tr><th>Match</th><th>Insats</th><th>Odds</th><th>Resultat</th><th>P/F</th><th></th></tr></thead>
+    <tbody>${bets.map((b, i) => {
+      const pnl = b.result === 'win' ? Math.round(b.stake * (b.odds - 1)) : b.result === 'loss' ? -b.stake : 0;
+      return `<tr>
+        <td style="font-size:0.82rem">${b.match}</td>
+        <td>${b.stake} kr</td>
+        <td>${b.odds}</td>
+        <td>${b.result === 'win' ? '✅ Vann' : b.result === 'loss' ? '❌ Förlorade' : '⏳'}</td>
+        <td style="color:${pnl > 0 ? 'var(--green-bright)' : pnl < 0 ? '#ff7b72' : 'var(--text-muted)'}">${pnl !== 0 ? (pnl > 0 ? '+' : '') + pnl + ' kr' : '—'}</td>
+        <td><button class="btn btn-sm" onclick="deleteRoi(${i})" style="color:#ff7b72;padding:2px 6px">✕</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+}
+
+function deleteRoi(i) {
+  state.roi.splice(i, 1);
+  storage.set('roiBets', state.roi);
+  renderRoi();
+}
+
+// ============================================================
+// EXPORT CSV
+// ============================================================
+function exportCsv() {
+  if (!state.matches.length) { showToast('Inga matcher att exportera.', 'warning'); return; }
+  const minValue = parseFloat(document.getElementById('minValue').value);
+  const rows = state.matches.filter(m => m.valuePct >= minValue);
+  const header = 'Match,Liga,DC-typ,Bästa odds,Modellodds,Value %,Formpoäng hemma,Formpoäng borta,Kickoff\n';
+  const csv = header + rows.map(m =>
+    `"${m.homeTeam} vs ${m.awayTeam}","${m.league}",${m.dcType},${m.bestOdds.toFixed(2)},${m.trueOdds.toFixed(2)},${m.valuePct},${m.formScoreHome},${m.formScoreAway},"${formatTime(m.kickoff)}"`
+  ).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'dubbelchans-value.csv'; a.click();
+  showToast('📤 CSV exporterad!');
+}
+
+function exportHistory() {
+  if (!state.history.length) { showToast('Ingen historik att exportera.', 'warning'); return; }
+  const header = 'Match,Liga,DC-typ,Odds,Value %,Kickoff,Resultat\n';
+  const csv = header + state.history.map(h =>
+    `"${h.match}","${h.league}",${h.dcType},${h.bestOdds.toFixed(2)},${h.valuePct},"${new Date(h.kickoff).toLocaleDateString('sv-SE')}",${h.result || 'pågående'}`
+  ).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob); const a = document.createElement('a');
+  a.href = url; a.download = 'dubbelchans-historik.csv'; a.click();
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function showTab(name) {
+  ['finder', 'history', 'roi', 'info'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === name ? 'block' : 'none';
+  });
+  if (name === 'history') renderHistory();
+  if (name === 'roi') renderRoi();
+}
+
+// ============================================================
+// INIT & EVENT LISTENERS
+// ============================================================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    showTab(tab.dataset.tab);
+  });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', fetchAllOdds);
+document.getElementById('openSettings').addEventListener('click', () => {
+  document.getElementById('oddsKeyInput').value = state.oddsKey;
+  document.getElementById('footballKeyInput').value = state.footballKey;
+  document.getElementById('settingsModal').classList.add('open');
+});
+document.getElementById('closeSettings').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('open'));
+document.getElementById('bannerSettingsBtn').addEventListener('click', () => document.getElementById('openSettings').click());
+
+document.getElementById('saveSettings').addEventListener('click', () => {
+  const k = document.getElementById('oddsKeyInput').value.trim();
+  const fk = document.getElementById('footballKeyInput').value.trim();
+  state.oddsKey = k; state.footballKey = fk;
+  storage.set('oddsApiKey', k); storage.set('footballApiKey', fk);
+  document.getElementById('settingsModal').classList.remove('open');
+  showToast('💾 API-nycklar sparade!');
+  if (k) document.getElementById('key-banner').classList.remove('show');
+});
+
+document.getElementById('settingsModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('settingsModal')) document.getElementById('settingsModal').classList.remove('open');
+});
+
+['oddsMin','oddsMax','minValue'].forEach(id => {
+  const el = document.getElementById(id);
+  const val = document.getElementById(id + 'Val');
+  el.addEventListener('input', () => {
+    val.textContent = id === 'minValue' ? el.value + '%' : el.value;
+    renderMatches();
+  });
+});
+
+['dcFilter','sortBy'].forEach(id => document.getElementById(id).addEventListener('change', renderMatches));
+document.querySelectorAll('#leagueChecks input').forEach(cb => cb.addEventListener('change', renderMatches));
+
+document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+document.getElementById('exportHistoryBtn').addEventListener('click', exportHistory);
+document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+  if (confirm('Rensa all historik?')) { state.history = []; storage.remove('valueHistory'); renderHistory(); }
+});
+
+document.getElementById('addRoiBtn').addEventListener('click', () => {
+  const match = document.getElementById('roi-match').value.trim();
+  const stake = parseFloat(document.getElementById('roi-stake').value);
+  const odds = parseFloat(document.getElementById('roi-odds').value);
+  const result = document.getElementById('roi-result').value;
+  if (!match || !stake || !odds) { showToast('Fyll i match, insats och odds.', 'warning'); return; }
+  state.roi.unshift({ match, stake, odds, result, date: new Date().toISOString() });
+  storage.set('roiBets', state.roi);
+  document.getElementById('roi-match').value = '';
+  document.getElementById('roi-stake').value = '';
+  document.getElementById('roi-odds').value = '';
+  document.getElementById('roi-result').value = '';
+  renderRoi();
+  showToast('💰 Spel loggat!');
+});
+
+// CHECK KEY ON LOAD
+if (!state.oddsKey) document.getElementById('key-banner').classList.add('show');
+</script>
+</body>
+</html>
