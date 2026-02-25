@@ -166,6 +166,11 @@
 <header>
   <div class="logo"><span>⚽</span><span>Dubbelchans Value Finder</span></div>
   <div class="header-actions">
+    <div id="reqCounter" style="display:none;font-size:0.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;gap:5px;align-items:center">
+      <span>🔑</span>
+      <span id="reqUsed">—</span><span style="color:var(--text-muted)">/500</span>
+      <span id="reqBar" style="display:inline-block;width:60px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;vertical-align:middle;margin-left:3px"><span id="reqFill" style="display:block;height:100%;background:var(--green-bright);border-radius:3px;transition:width 0.4s"></span></span>
+    </div>
     <button class="btn btn-sm" id="refreshBtn">🔄 Uppdatera</button>
     <button class="btn btn-sm btn-green" id="openSettings">⚙️ Inställningar</button>
   </div>
@@ -387,6 +392,19 @@
       </div>
       <div id="roiBets" style="margin-top:16px"></div>
     </div>
+
+    <!-- ELO RATINGS TABLE -->
+    <div class="card" style="margin-top:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="margin:0">⚡ Elo-betyg (uppdateras från loggade resultat)</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm btn-purple" onclick="renderEloTable()">🔄 Uppdatera</button>
+          <button class="btn btn-sm" onclick="EloHistory.reset()" style="color:#ff7b72">🗑️ Återställ</button>
+        </div>
+      </div>
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px">Varje gång du loggar ett matchresultat (✅/❌) uppdateras Elo-betygen automatiskt. Betygen används sedan av Elo-modellen istället för de seedade värdena.</p>
+      <div id="eloTableContent"><p style="color:var(--text-muted);font-size:0.85rem">Inga Elo-betyg sparade ännu. Logga matchresultat nedan så byggs betygen upp automatiskt.</p></div>
+    </div>
   </div>
 
   <!-- INFO TAB -->
@@ -570,10 +588,29 @@ function simStats(h,a){
   return{home:{avgGoalsScored:rng(h+'hs',1.1,2.2),avgGoalsConceded:rng(h+'hc',0.7,1.8),form:gf(h+'f'),homeRecord:{w:seed(h+'hw')%8+3,d:seed(h+'hd')%5+1,l:seed(h+'hl')%5+1}},away:{avgGoalsScored:rng(a+'as',0.9,1.9),avgGoalsConceded:rng(a+'ac',0.9,2.0),form:gf(a+'f'),awayRecord:{w:seed(a+'aw')%6+1,d:seed(a+'ad')%4+1,l:seed(a+'al')%7+2}}};
 }
 
-function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel){
+function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache={}){
   const ligaAvg=LEAGUE_AVG[league]||2.6,kickoff=new Date(game.commence_time);
   if(kickoff<new Date())return[];
-  const stats=simStats(game.home_team,game.away_team);
+  // Use real stats if available, otherwise simulate
+  const cachedH = realStatsCache[game.home_team];
+  const cachedA = realStatsCache[game.away_team];
+  const sim = simStats(game.home_team,game.away_team);
+  const stats = {
+    home: cachedH ? {
+      avgGoalsScored: cachedH.avgGoalsScored ?? sim.home.avgGoalsScored,
+      avgGoalsConceded: cachedH.avgGoalsConceded ?? sim.home.avgGoalsConceded,
+      form: cachedH.form ?? sim.home.form,
+      homeRecord: cachedH.record ?? sim.home.homeRecord,
+      source: cachedH.source
+    } : sim.home,
+    away: cachedA ? {
+      avgGoalsScored: cachedA.avgGoalsScored ?? sim.away.avgGoalsScored,
+      avgGoalsConceded: cachedA.avgGoalsConceded ?? sim.away.avgGoalsConceded,
+      form: cachedA.form ?? sim.away.form,
+      awayRecord: cachedA.record ?? sim.away.awayRecord,
+      source: cachedA.source
+    } : sim.away
+  };
   const lH=(stats.home.avgGoalsScored/(ligaAvg/2))*(stats.away.avgGoalsConceded/(ligaAvg/2))*(ligaAvg/2)*P.ff(stats.home.form);
   const lA=(stats.away.avgGoalsScored/(ligaAvg/2))*(stats.home.avgGoalsConceded/(ligaAvg/2))*(ligaAvg/2)*P.ff(stats.away.form);
 
@@ -631,6 +668,146 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel){
   return results;
 }
 
+// ============================================================
+// REQUESTS COUNTER
+// ============================================================
+function updateReqCounter(used, remaining) {
+  const u = parseInt(used)||0;
+  const rem = parseInt(remaining)||0;
+  const total = u + rem;
+  const pct = total > 0 ? Math.round((u/total)*100) : 0;
+  const el = document.getElementById('reqCounter');
+  el.style.display = 'inline-flex';
+  document.getElementById('reqUsed').textContent = u;
+  document.getElementById('reqFill').style.width = pct+'%';
+  document.getElementById('reqFill').style.background = pct>80?'var(--red)':pct>60?'var(--yellow-bright)':'var(--green-bright)';
+  // Also update stat box
+  S.set('reqUsed', u); S.set('reqRem', rem);
+}
+
+// ============================================================
+// API-FOOTBALL STATS
+// ============================================================
+// Map Odds API league keys to API-Football league IDs
+const LEAGUE_ID_MAP = {
+  soccer_epl: 39, soccer_spain_la_liga: 140, soccer_italy_serie_a: 135,
+  soccer_germany_bundesliga: 78, soccer_france_ligue_one: 61,
+  soccer_netherlands_eredivisie: 88, soccer_portugal_primeira_liga: 94,
+  soccer_belgium_first_div: 144, soccer_turkey_super_league: 203,
+  soccer_scotland_premiership: 179, soccer_sweden_allsvenskan: 113,
+  soccer_norway_eliteserien: 103, soccer_denmark_superliga: 119,
+  soccer_austria_bundesliga: 218, soccer_greece_super_league: 197,
+  soccer_uefa_champs_league: 2, soccer_uefa_europa_league: 3, soccer_finland_veikkausliiga: 244
+};
+
+async function prefetchFootballStats(leagues, cache) {
+  const season = new Date().getFullYear();
+  for (const league of leagues) {
+    const leagueId = LEAGUE_ID_MAP[league];
+    if (!leagueId) continue;
+    try {
+      const r = await fetch(`https://v3.football.api-sports.io/teams/statistics?league=${leagueId}&season=${season}`, {
+        headers: { 'x-apisports-key': state.footballKey }
+      });
+      if (!r.ok) continue;
+      // We'll fetch per-match team stats lazily via team search
+    } catch(e) { /* silent fail, use simulation */ }
+  }
+}
+
+async function fetchTeamStats(teamName, leagueId, season) {
+  try {
+    // Search for team
+    const searchRes = await fetch(`https://v3.football.api-sports.io/teams?search=${encodeURIComponent(teamName)}`, {
+      headers: { 'x-apisports-key': state.footballKey }
+    });
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    const team = searchData.response?.[0]?.team;
+    if (!team) return null;
+
+    // Get team statistics
+    const statsRes = await fetch(`https://v3.football.api-sports.io/teams/statistics?team=${team.id}&league=${leagueId}&season=${season}`, {
+      headers: { 'x-apisports-key': state.footballKey }
+    });
+    if (!statsRes.ok) return null;
+    const statsData = await statsRes.json();
+    const s = statsData.response;
+    if (!s) return null;
+
+    const gf = s.goals?.for?.average?.home || s.goals?.for?.average?.total;
+    const ga = s.goals?.against?.average?.home || s.goals?.against?.average?.total;
+    const fixtures = s.fixtures;
+    const w = fixtures?.wins?.home + fixtures?.wins?.away || 0;
+    const d = fixtures?.draws?.home + fixtures?.draws?.away || 0;
+    const l = fixtures?.loses?.home + fixtures?.loses?.away || 0;
+
+    // Build form from last 5 fixtures (use biggest wins/draws/loses as proxy)
+    const form = s.form ? s.form.slice(-5).split('').map(c=>c==='W'?'W':c==='D'?'D':'L') : null;
+
+    return {
+      avgGoalsScored: parseFloat(gf) || null,
+      avgGoalsConceded: parseFloat(ga) || null,
+      form: form,
+      record: { w, d, l },
+      source: 'api-football'
+    };
+  } catch(e) { return null; }
+}
+
+// ============================================================
+// ELO HISTORY (localStorage-based, updated from logged results)
+// ============================================================
+const EloHistory = {
+  K: 32,
+  getAll() { return S.get('eloRatings', {}); },
+  getRating(team) { return this.getAll()[team] || 1500; },
+  expected(rA, rB) { return 1/(1+Math.pow(10,(rB-rA)/400)); },
+  update(homeTeam, awayTeam, result) {
+    // result: 'home' | 'draw' | 'away'
+    const ratings = this.getAll();
+    const rH = ratings[homeTeam] || 1500;
+    const rA = ratings[awayTeam] || 1500;
+    const expH = this.expected(rH + 65, rA); // home advantage
+    const expA = 1 - expH;
+    const sH = result==='home'?1:result==='draw'?0.5:0;
+    const sA = 1 - sH;
+    ratings[homeTeam] = Math.round(rH + this.K*(sH-expH));
+    ratings[awayTeam] = Math.round(rA + this.K*(sA-expA));
+    S.set('eloRatings', ratings);
+    return ratings;
+  },
+  // Override seedElo with stored rating if available
+  getElo(team) { return this.getAll()[team] || EloModel.seedElo(team); },
+  topRatings(n=15) {
+    const all = this.getAll();
+    return Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,n);
+  },
+  reset() { S.del('eloRatings'); showToast('Elo-betyg återställda.'); renderEloTable(); }
+};
+
+// Patch EloModel to use stored ratings
+const _origOutcomes = EloModel.outcomes.bind(EloModel);
+EloModel.outcomes = function(homeTeam, awayTeam) {
+  const eH = EloHistory.getElo(homeTeam) + this.HOME_ADV;
+  const eA = EloHistory.getElo(awayTeam);
+  const winH = this.expected(eH, eA);
+  const winA = this.expected(eA, eH);
+  const drawBase = 0.26;
+  const adj = Math.max(0, drawBase - Math.abs(winH-winA)*0.4);
+  const pH = winH*(1-adj), pA = winA*(1-adj), pX = Math.max(0.05,adj);
+  const tot = pH+pX+pA;
+  return { pH:pH/tot, pX:pX/tot, pA:pA/tot };
+};
+
+function renderEloTable() {
+  const el = document.getElementById('eloTableContent');
+  if (!el) return;
+  const top = EloHistory.topRatings(20);
+  if (!top.length) { el.innerHTML='<p style="color:var(--text-muted);font-size:0.85rem">Inga Elo-betyg sparade ännu. Logga matchresultat i ROI-trackern så byggs betygen upp automatiskt.</p>'; return; }
+  el.innerHTML = `<table class="history-table"><thead><tr><th>#</th><th>Lag</th><th>Elo-betyg</th><th>Nivå</th></tr></thead><tbody>${top.map(([team,rating],i)=>`<tr><td style="color:var(--text-muted)">${i+1}</td><td>${team}</td><td style="font-weight:700;color:${rating>=1600?'var(--green-bright)':rating>=1500?'var(--yellow-bright)':'var(--text-muted)'}">${rating}</td><td>${rating>=1700?'🏆 Elit':rating>=1600?'⭐ Stark':rating>=1500?'📊 Normal':rating>=1400?'📉 Svag':'⚠️ Dålig'}</td></tr>`).join('')}</tbody></table>`;
+}
+
 async function fetchAllOdds(){
   if(location.protocol==='file:'){document.getElementById('matchList').innerHTML=`<div style="background:rgba(218,54,51,0.1);border:1px solid #da3633;border-radius:8px;padding:20px 24px;line-height:1.8"><div style="font-size:1.1rem;font-weight:700;color:#ff7b72;margin-bottom:10px">⚠️ Lokal server krävs</div><p style="color:var(--text);margin-bottom:12px">Öppna terminalen och kör:</p><div style="background:var(--surface2);border-radius:6px;padding:12px;font-family:monospace;font-size:0.9rem;color:var(--green-bright)">python3 -m http.server 8080</div><p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px">Öppna sedan <strong style="color:var(--blue-bright)">http://localhost:8080</strong></p></div>`;return;}
   if(!state.oddsKey){document.getElementById('key-banner').classList.add('show');showToast('API-nyckel saknas!','error');return;}
@@ -642,12 +819,21 @@ async function fetchAllOdds(){
   const activeModel=getActiveModel();
   const mktParam=['h2h',...(activeMarkets.includes('ou25')?['totals']:[]),...(activeMarkets.includes('btts')?['btts']:[])].join(',');
   const allMatches=[];let errors=0,corsErr=false;
+  // Pre-fetch real stats if Football API key exists
+  const realStatsCache = {};
+  if(state.footballKey) {
+    try { await prefetchFootballStats(activeLeagues, realStatsCache); } catch(e) { console.warn('Football API error:',e); }
+  }
   for(const league of activeLeagues){
     try{
       const r=await fetch(`https://api.the-odds-api.com/v4/sports/${league}/odds/?apiKey=${state.oddsKey}&regions=eu&markets=${mktParam}&oddsFormat=decimal`);
       if(!r.ok){errors++;continue;}
+      // Read remaining requests from headers
+      const remaining=r.headers.get('x-requests-remaining');
+      const used=r.headers.get('x-requests-used');
+      if(remaining!==null||used!==null) updateReqCounter(used,remaining);
       const data=await r.json();
-      for(const game of data)allMatches.push(...processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel));
+      for(const game of data)allMatches.push(...processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache));
     }catch(e){if(e.message==='Failed to fetch')corsErr=true;errors++;}
   }
   if(allMatches.filter(m=>m.valuePct>=5).length>0) playSound();state.matches=allMatches;state.lastUpdated=new Date();
@@ -694,7 +880,7 @@ function renderMatches(){
     <div class="match-detail" id="detail-${m.id}">
       <div class="detail-grid">
         <div class="detail-section">
-          <h4>🏠 ${m.homeTeam}</h4>
+          <h4>🏠 ${m.homeTeam} ${m.stats.home.source==='api-football'?'<span class="badge badge-green" style="font-size:0.68rem">✅ Riktig data</span>':'<span class="badge badge-gray" style="font-size:0.68rem">🎲 Simulerad</span>'}</h4>
           <div class="form-dots">${fmtDots(m.stats.home.form)}</div>
           <div class="stat-row"><span>Formpoäng</span><span>${m.formScoreHome}/100</span></div>
           <div class="stat-row"><span>Snitt mål gjorda</span><span>${m.stats.home.avgGoalsScored.toFixed(2)}</span></div>
@@ -703,7 +889,7 @@ function renderMatches(){
           <div class="stat-row"><span>Förv. mål λ</span><span>${m.lH}</span></div>
         </div>
         <div class="detail-section">
-          <h4>✈️ ${m.awayTeam}</h4>
+          <h4>✈️ ${m.awayTeam} ${m.stats.away.source==='api-football'?'<span class="badge badge-green" style="font-size:0.68rem">✅ Riktig data</span>':'<span class="badge badge-gray" style="font-size:0.68rem">🎲 Simulerad</span>'}</h4>
           <div class="form-dots">${fmtDots(m.stats.away.form)}</div>
           <div class="stat-row"><span>Formpoäng</span><span>${m.formScoreAway}/100</span></div>
           <div class="stat-row"><span>Snitt mål gjorda</span><span>${m.stats.away.avgGoalsScored.toFixed(2)}</span></div>
@@ -757,7 +943,20 @@ function renderHistory(){
   const clvPos=state.history.filter(h=>h.clv!==null&&h.clv>0).length,clvTot=state.history.filter(h=>h.clv!==null).length;
   el.innerHTML=`<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:0.84rem"><span>Träffprocent: <strong style="color:var(--green-bright)">${settled.length?Math.round(wins.length/settled.length*100):0}%</strong> (${wins.length}/${settled.length})</span><span>CLV positiv: <strong style="color:var(--green-bright)">${clvTot?Math.round(clvPos/clvTot*100):0}%</strong> (${clvPos}/${clvTot})</span></div><div style="overflow-x:auto"><table class="history-table"><thead><tr><th>Match</th><th>Marknad</th><th>Odds</th><th>Value</th><th>CLV</th><th>Datum</th><th>Resultat</th><th></th></tr></thead><tbody>${state.history.map((h,i)=>`<tr><td style="font-size:0.82rem">${h.match}<br><span style="color:var(--text-muted);font-size:0.74rem">${h.league}</span></td><td><span class="badge badge-gray" style="font-size:0.72rem">${h.dcType}</span></td><td>${h.bestOdds.toFixed(2)}</td><td class="${h.valuePct>=10?'val-green':'val-yellow'}">+${h.valuePct}%</td><td>${h.clv!==null?`<span class="clv-badge ${h.clv>=0?'clv-pos':'clv-neg'}">${h.clv>0?'+':''}${h.clv}%</span>`:`<button class="btn btn-sm" onclick="updateCLV(${i})" style="padding:2px 7px;font-size:0.75rem">Uppdatera</button>`}</td><td style="color:var(--text-muted);font-size:0.78rem">${new Date(h.kickoff).toLocaleDateString('sv-SE')}</td><td>${h.result==='win'?'<span class="badge badge-green">✅</span>':h.result==='loss'?'<span class="badge badge-red">❌</span>':`<span style="display:flex;gap:3px"><button class="btn btn-sm" onclick="setResult(${i},'win')" style="padding:2px 6px">✅</button><button class="btn btn-sm" onclick="setResult(${i},'loss')" style="padding:2px 6px">❌</button></span>`}</td><td><button class="btn btn-sm" onclick="delHistory(${i})" style="color:#ff7b72;padding:2px 6px">✕</button></td></tr>`).join('')}</tbody></table></div>`;
 }
-function setResult(i,r){state.history[i].result=r;S.set('valueHistory',state.history);renderHistory();}
+function setResult(i,r){
+  state.history[i].result=r;
+  S.set('valueHistory',state.history);
+  // Update Elo from match result
+  const h=state.history[i];
+  const parts=h.match.split(' vs ');
+  if(parts.length===2){
+    const homeTeam=parts[0].trim(), awayTeam=parts[1].replace(/\s*\(.*\)/,'').trim();
+    const eloResult = r==='win'?(h.dcType&&h.dcType.startsWith('2')?'away':'home'):r==='loss'?(h.dcType&&h.dcType.startsWith('2')?'home':'away'):'draw';
+    EloHistory.update(homeTeam, awayTeam, eloResult);
+  }
+  renderHistory();
+  renderEloTable();
+}
 function delHistory(i){state.history.splice(i,1);S.set('valueHistory',state.history);renderHistory();}
 
 function calcKelly(){
@@ -821,6 +1020,15 @@ document.getElementById('addRoiBtn').addEventListener('click',()=>{
   const match=document.getElementById('roi-match').value.trim(),stake=parseFloat(document.getElementById('roi-stake').value),odds=parseFloat(document.getElementById('roi-odds').value),market=document.getElementById('roi-market').value,result=document.getElementById('roi-result').value;
   if(!match||!stake||!odds){showToast('Fyll i match, insats och odds.','warning');return;}
   state.roi.unshift({match,stake,odds,market,result,date:new Date().toISOString()});S.set('roiBets',state.roi);
+  // Update Elo immediately if result is known
+  if(result){
+    const parts=match.split(' vs ');
+    if(parts.length===2){
+      const homeTeam=parts[0].trim(),awayTeam=parts[1].replace(/\s*\(.*\)/,'').trim();
+      EloHistory.update(homeTeam,awayTeam,result==='win'?'home':result==='loss'?'away':'draw');
+      renderEloTable();
+    }
+  }
   ['roi-match','roi-stake','roi-odds'].forEach(id=>document.getElementById(id).value='');document.getElementById('roi-result').value='';renderRoi();showToast('💰 Loggat!');
 });
 if(!state.oddsKey)document.getElementById('key-banner').classList.add('show');
