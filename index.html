@@ -874,6 +874,23 @@ function toggleDetail(id) {
 // FETCH ODDS
 // ============================================================
 async function fetchAllOdds() {
+  // CORS-kontroll: file:// fungerar inte för API-anrop
+  if (location.protocol === 'file:') {
+    document.getElementById('matchList').innerHTML = `
+      <div style="background:rgba(218,54,51,0.1);border:1px solid #da3633;border-radius:8px;padding:20px 24px;line-height:1.8">
+        <div style="font-size:1.1rem;font-weight:700;color:#ff7b72;margin-bottom:10px">⚠️ Lokal server krävs</div>
+        <p style="color:var(--text);margin-bottom:12px">Webbläsaren blockerar API-anrop när filen öppnas direkt (<code style="background:var(--surface2);padding:1px 5px;border-radius:3px">file://</code>). Du behöver starta en lokal server.</p>
+        <p style="color:var(--text-muted);margin-bottom:8px">Öppna terminalen, navigera till projektmappen och kör <strong>ett</strong> av alternativen:</p>
+        <div style="background:var(--surface2);border-radius:6px;padding:12px;font-family:monospace;font-size:0.9rem;color:var(--green-bright);margin-bottom:8px">
+          cd ~/Desktop/dubbelchans-value-finder<br>
+          npx serve .
+        </div>
+        <p style="color:var(--text-muted);font-size:0.85rem">Eller med Python: <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">python3 -m http.server 8080</code></p>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px">Öppna sedan <strong style="color:var(--blue-bright)">http://localhost:3000</strong> (npx serve) eller <strong style="color:var(--blue-bright)">http://localhost:8080</strong> (python) i webbläsaren.</p>
+      </div>`;
+    return;
+  }
+
   if (!state.oddsKey) {
     document.getElementById('key-banner').classList.add('show');
     showToast('API-nyckel saknas! Öppna inställningar.', 'error');
@@ -891,6 +908,7 @@ async function fetchAllOdds() {
 
   const allMatches = [];
   let errors = 0;
+  let corsError = false;
 
   for (const league of activeLeagues) {
     try {
@@ -899,6 +917,7 @@ async function fetchAllOdds() {
       allMatches.push(...processed);
     } catch (e) {
       console.error(`Error fetching ${league}:`, e);
+      if (e.message === 'Failed to fetch') corsError = true;
       errors++;
     }
   }
@@ -908,6 +927,19 @@ async function fetchAllOdds() {
   state.loading = false;
   document.getElementById('loadingIndicator').style.display = 'none';
   document.getElementById('refreshBtn').disabled = false;
+
+  if (corsError && allMatches.length === 0) {
+    document.getElementById('matchList').innerHTML = `
+      <div style="background:rgba(218,54,51,0.1);border:1px solid #da3633;border-radius:8px;padding:20px 24px;line-height:1.8">
+        <div style="font-size:1.1rem;font-weight:700;color:#ff7b72;margin-bottom:10px">⚠️ Nätverksfel (CORS)</div>
+        <p style="color:var(--text);margin-bottom:12px">API-anropen blockeras. Kontrollera att du kör via en lokal server och att API-nyckeln är korrekt.</p>
+        <div style="background:var(--surface2);border-radius:6px;padding:12px;font-family:monospace;font-size:0.9rem;color:var(--green-bright)">
+          cd ~/Desktop/dubbelchans-value-finder<br>npx serve .
+        </div>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px">Öppna sedan <strong style="color:var(--blue-bright)">http://localhost:3000</strong> i webbläsaren.</p>
+      </div>`;
+    return;
+  }
 
   const valueCount = allMatches.filter(m => m.valuePct >= 5).length;
   if (valueCount > 0) playValueSound();
