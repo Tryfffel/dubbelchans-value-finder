@@ -448,6 +448,7 @@
 const S={get:(k,d=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},del:(k)=>{try{localStorage.removeItem(k);}catch{}}};
 
 let state={oddsKey:S.get('oddsApiKey',''),footballKey:S.get('footballApiKey',''),bankroll:S.get('bankroll',5000),matches:[],history:S.get('valueHistory',[]),roi:S.get('roiBets',[]),lastUpdated:null,audioCtx:null};
+let realStatsCache = {}; // global so it persists between renders
 
 // ============================================================
 // DIXON-COLES CORRECTION
@@ -647,7 +648,7 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realS
   }
 
   const modelTag = activeModel==='dixon'?'DC-corr':activeModel==='elo'?'Elo':activeModel==='market'?'Mkt':'Poisson';
-  const base={homeTeam:game.home_team,awayTeam:game.away_team,league:LEAGUE_NAMES[league]||league,leagueKey:league,kickoff,stats,formScoreHome:P.fs(stats.home.form),formScoreAway:P.fs(stats.away.form),pH:Math.round(pH*1000)/10,pX:Math.round(pX*1000)/10,pA:Math.round(pA*1000)/10,lH:Math.round(lH*100)/100,lA:Math.round(lA*100)/100,modelTag};
+  const base={homeTeam:game.home_team,awayTeam:game.away_team,league:LEAGUE_NAMES[league]||league,leagueKey:league,kickoff,stats,formScoreHome:P.fs(stats.home.form),formScoreAway:P.fs(stats.away.form),pH:Math.round(pH*1000)/10,pX:Math.round(pX*1000)/10,pA:Math.round(pA*1000)/10,lH:Math.round(lH*100)/100,lA:Math.round(lA*100)/100,modelTag,teamIdHome:cachedH?.teamId||null,teamIdAway:cachedA?.teamId||null,h2h:null,h2hLoaded:false};
   const push=(id,market,dcType,prob,bkOdds)=>{if(!bkOdds.length)return;const best=bkOdds.reduce((a,b)=>b.odds>a.odds?b:a);const vp=Math.round(P.val(best.odds,prob)*10)/10;results.push({...base,id,market,dcType,bestOdds:best.odds,bestBk:best.bk,trueOdds:Math.round((1/prob)*100)/100,valuePct:vp,modelProb:Math.round(prob*1000)/10,allBkOdds:bkOdds});};
   const mkBk=(rawSrc,fn,min,max)=>Object.keys(rawSrc).map(bk=>{const o=fn(rawSrc[bk]);return o&&o>=min&&o<=max?{bk,odds:o}:null;}).filter(Boolean);
   if(activeMarkets.includes('dc')&&Object.keys(raw1x2).length){
@@ -738,21 +739,83 @@ async function fetchTeamStats(teamName, leagueId, season) {
     const gf = s.goals?.for?.average?.home || s.goals?.for?.average?.total;
     const ga = s.goals?.against?.average?.home || s.goals?.against?.average?.total;
     const fixtures = s.fixtures;
+    const played = fixtures?.played?.total || 1;
     const w = fixtures?.wins?.home + fixtures?.wins?.away || 0;
     const d = fixtures?.draws?.home + fixtures?.draws?.away || 0;
     const l = fixtures?.loses?.home + fixtures?.loses?.away || 0;
+
+    // Cards averages
+    const yellowTotal = s.cards?.yellow ? Object.values(s.cards.yellow).reduce((sum,v)=>sum+(v?.total||0),0) : 0;
+    const redTotal = s.cards?.red ? Object.values(s.cards.red).reduce((sum,v)=>sum+(v?.total||0),0) : 0;
+    // Corners averages (available in some plans)
+    const cornersFor = s.goals?.for?.average?.total ? null : null; // fallback — use fixtures corners if present
+    const cornersAvg = s.statistics?.find?.(x=>x.type==='Corner Kicks')?.value || null;
 
     // Build form from last 5 fixtures (use biggest wins/draws/loses as proxy)
     const form = s.form ? s.form.slice(-5).split('').map(c=>c==='W'?'W':c==='D'?'D':'L') : null;
 
     return {
+      teamId: team.id,
       avgGoalsScored: parseFloat(gf) || null,
       avgGoalsConceded: parseFloat(ga) || null,
       form: form,
       record: { w, d, l },
+      avgYellowCards: Math.round((yellowTotal/played)*100)/100,
+      avgRedCards: Math.round((redTotal/played)*100)/100,
       source: 'api-football'
     };
   } catch(e) { return null; }
+}
+
+// ============================================================
+// H2H FETCH (lazy, called when match card is expanded)
+// ============================================================
+async function fetchH2H(teamAId, teamBId) {
+  try {
+    const r = await fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${teamAId}-${teamBId}&last=5`, {
+      headers: { 'x-apisports-key': state.footballKey }
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.response || [];
+  } catch(e) { return null; }
+}
+
+function renderH2HSection(id, fixtures, m) {
+  const el = document.getElementById(`h2h-${id}`);
+  if (!el) return;
+  if (!fixtures || !fixtures.length) {
+    el.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem">Inga H2H-matcher hittades.</p>';
+    return;
+  }
+  const rows = fixtures.map(f => {
+    const hName = f.teams?.home?.name || '?';
+    const aName = f.teams?.away?.name || '?';
+    const hG = f.goals?.home ?? '?';
+    const aG = f.goals?.away ?? '?';
+    const date = f.fixture?.date ? new Date(f.fixture.date).toLocaleDateString('sv-SE') : '?';
+    const hWin = typeof hG === 'number' && typeof aG === 'number' && hG > aG;
+    const aWin = typeof hG === 'number' && typeof aG === 'number' && aG > hG;
+    const draw = typeof hG === 'number' && typeof aG === 'number' && hG === aG;
+    // Highlight winner
+    const hStyle = hWin ? 'color:var(--green-bright);font-weight:700' : draw ? 'color:var(--yellow-bright)' : 'color:var(--text-muted)';
+    const aStyle = aWin ? 'color:var(--green-bright);font-weight:700' : draw ? 'color:var(--yellow-bright)' : 'color:var(--text-muted)';
+    return `<tr>
+      <td style="font-size:0.78rem;color:var(--text-muted)">${date}</td>
+      <td style="font-size:0.82rem;${hStyle}">${hName}</td>
+      <td style="text-align:center;font-weight:700;font-size:0.88rem">${hG} – ${aG}</td>
+      <td style="font-size:0.82rem;${aStyle}">${aName}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+    <thead><tr>
+      <th style="text-align:left;color:var(--text-muted);font-weight:500;padding:4px 6px;font-size:0.75rem">Datum</th>
+      <th style="color:var(--text-muted);font-weight:500;padding:4px 6px;font-size:0.75rem">Hemma</th>
+      <th style="text-align:center;color:var(--text-muted);font-weight:500;padding:4px 6px;font-size:0.75rem">Mål</th>
+      <th style="color:var(--text-muted);font-weight:500;padding:4px 6px;font-size:0.75rem">Borta</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 }
 
 // ============================================================
@@ -819,8 +882,8 @@ async function fetchAllOdds(){
   const activeModel=getActiveModel();
   const mktParam=['h2h',...(activeMarkets.includes('ou25')?['totals']:[]),...(activeMarkets.includes('btts')?['btts']:[])].join(',');
   const allMatches=[];let errors=0,corsErr=false;
-  // Pre-fetch real stats if Football API key exists
-  const realStatsCache = {};
+  // Reset and pre-fetch real stats if Football API key exists
+  realStatsCache = {};
   if(state.footballKey) {
     try { await prefetchFootballStats(activeLeagues, realStatsCache); } catch(e) { console.warn('Football API error:',e); }
   }
@@ -887,6 +950,8 @@ function renderMatches(){
           <div class="stat-row"><span>Snitt mål insläppta</span><span>${m.stats.home.avgGoalsConceded.toFixed(2)}</span></div>
           <div class="stat-row"><span>Hemmarekord V/O/F</span><span>${m.stats.home.homeRecord.w}/${m.stats.home.homeRecord.d}/${m.stats.home.homeRecord.l}</span></div>
           <div class="stat-row"><span>Förv. mål λ</span><span>${m.lH}</span></div>
+          ${m.stats.home.avgYellowCards!=null?`<div class="stat-row"><span>🟨 Gula kort / match</span><span>${m.stats.home.avgYellowCards}</span></div>`:''}
+          ${m.stats.home.avgRedCards!=null&&m.stats.home.avgRedCards>0?`<div class="stat-row"><span>🟥 Röda kort / match</span><span>${m.stats.home.avgRedCards}</span></div>`:''}
         </div>
         <div class="detail-section">
           <h4>✈️ ${m.awayTeam} ${m.stats.away.source==='api-football'?'<span class="badge badge-green" style="font-size:0.68rem">✅ Riktig data</span>':'<span class="badge badge-gray" style="font-size:0.68rem">🎲 Simulerad</span>'}</h4>
@@ -896,6 +961,8 @@ function renderMatches(){
           <div class="stat-row"><span>Snitt mål insläppta</span><span>${m.stats.away.avgGoalsConceded.toFixed(2)}</span></div>
           <div class="stat-row"><span>Borterekord V/O/F</span><span>${m.stats.away.awayRecord.w}/${m.stats.away.awayRecord.d}/${m.stats.away.awayRecord.l}</span></div>
           <div class="stat-row"><span>Förv. mål λ</span><span>${m.lA}</span></div>
+          ${m.stats.away.avgYellowCards!=null?`<div class="stat-row"><span>🟨 Gula kort / match</span><span>${m.stats.away.avgYellowCards}</span></div>`:''}
+          ${m.stats.away.avgRedCards!=null&&m.stats.away.avgRedCards>0?`<div class="stat-row"><span>🟥 Röda kort / match</span><span>${m.stats.away.avgRedCards}</span></div>`:''}
         </div>
         <div class="detail-section">
           <h4>🧮 Sannolikheter</h4>
@@ -919,11 +986,31 @@ function renderMatches(){
           </div>
         </div>
       </div>
+      ${state.footballKey&&m.teamIdHome&&m.teamIdAway?`
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">⚔️ Senaste möten (H2H)</div>
+        <div id="h2h-${m.id}"><span style="color:var(--text-muted);font-size:0.8rem">Expandera kortet för att ladda H2H-historik...</span></div>
+      </div>`:''}
     </div>
   </div>`).join('');
 }
 
-function toggleDetail(id){document.getElementById(`detail-${id}`).classList.toggle('open');document.getElementById(`chevron-${id}`).classList.toggle('open');}
+async function toggleDetail(id){
+  document.getElementById(`detail-${id}`).classList.toggle('open');
+  document.getElementById(`chevron-${id}`).classList.toggle('open');
+  const isOpen = document.getElementById(`detail-${id}`).classList.contains('open');
+  if (isOpen) {
+    const m = state.matches.find(x => x.id === id);
+    if (m && !m.h2hLoaded && state.footballKey && m.teamIdHome && m.teamIdAway) {
+      const h2hEl = document.getElementById(`h2h-${id}`);
+      if (h2hEl) h2hEl.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem">Hämtar H2H...</span>';
+      const fixtures = await fetchH2H(m.teamIdHome, m.teamIdAway);
+      m.h2h = fixtures;
+      m.h2hLoaded = true;
+      renderH2HSection(id, fixtures, m);
+    }
+  }
+}
 
 function saveToHistory(matchId){
   const m=state.matches.find(x=>x.id===matchId);if(!m)return;
