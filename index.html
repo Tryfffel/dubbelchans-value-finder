@@ -159,6 +159,50 @@
   .clv-neg { background: rgba(218,54,51,0.15); color: #ff7b72; }
   .section-divider { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 14px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
   @media (max-width: 600px) { header { padding: 0 12px; } .container { padding: 12px; } }
+
+  /* xG comparison strip */
+  .xg-strip { margin-top: 12px; background: var(--surface2); border-radius: 6px; padding: 10px 12px; }
+  .xg-strip-title { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .xg-row { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 4px; align-items: center; font-size: 0.8rem; margin-bottom: 4px; }
+  .xg-row:last-child { margin-bottom: 0; }
+  .xg-label { font-size: 0.72rem; color: var(--text-muted); }
+  .xg-cell { text-align: center; font-weight: 600; padding: 3px 0; border-radius: 4px; }
+  .xg-cell.model { background: rgba(137,87,229,0.12); color: #c9b1ff; }
+  .xg-cell.implied { background: rgba(31,111,235,0.12); color: var(--blue-bright); }
+  .xg-cell.edge-pos { background: rgba(46,160,67,0.15); color: var(--green-bright); }
+  .xg-cell.edge-neg { background: rgba(218,54,51,0.12); color: #ff7b72; }
+  .xg-cell.edge-neu { color: var(--text-muted); }
+  .badge-orange { background: rgba(210,153,34,0.2); color: var(--yellow-bright); border: 1px solid rgba(210,153,34,0.4); }
+  .badge-ah { background: rgba(251,146,60,0.18); color: #fb923c; border: 1px solid rgba(251,146,60,0.4); }
+
+  /* Asian Handicap strip */
+  .ah-strip { margin-top: 10px; background: var(--surface2); border-radius: 6px; padding: 10px 12px; }
+  .ah-strip-title { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .ah-line-row { display: grid; grid-template-columns: 110px 1fr 1fr 1fr 1fr; gap: 4px; align-items: center; font-size: 0.8rem; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .ah-line-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .ah-cell { text-align: center; font-weight: 600; padding: 3px 4px; border-radius: 4px; }
+  .ah-cell.ah-val-pos { background: rgba(46,160,67,0.15); color: var(--green-bright); }
+  .ah-cell.ah-val-neg { background: rgba(218,54,51,0.12); color: #ff7b72; }
+  .ah-cell.ah-val-neu { color: var(--text-muted); }
+
+  /* Soft Factor panel */
+  .sf-panel { margin-top: 12px; background: rgba(137,87,229,0.07); border: 1px solid rgba(137,87,229,0.3); border-radius: 6px; padding: 12px; }
+  .sf-panel-title { font-size: 0.72rem; color: #c9b1ff; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .sf-slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.82rem; }
+  .sf-slider-row input[type=range] { flex: 1; accent-color: var(--purple); }
+  .sf-slider-val { min-width: 46px; text-align: right; font-weight: 700; color: #c9b1ff; font-size: 0.88rem; }
+  .sf-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .sf-btn-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .sf-btn-label { font-size: 0.68rem; color: var(--text-muted); text-align: center; }
+  .sf-btn-sides { display: flex; gap: 2px; }
+  .sf-btn { padding: 4px 9px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); cursor: pointer; font-size: 0.74rem; font-weight: 700; transition: all 0.15s; }
+  .sf-btn:hover { border-color: var(--blue-bright); }
+  .sf-btn.active-h { background: rgba(46,160,67,0.2); border-color: var(--green-bright); color: var(--green-bright); }
+  .sf-btn.active-a { background: rgba(218,54,51,0.2); border-color: #ff7b72; color: #ff7b72; }
+  .sf-result { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .sf-result-box { background: var(--surface); border-radius: 6px; padding: 8px 6px; text-align: center; border: 1px solid var(--border); }
+  .sf-result-val { font-size: 1.05rem; font-weight: 700; }
+  .sf-result-lbl { font-size: 0.67rem; color: var(--text-muted); margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -239,6 +283,7 @@
             <label class="market-check"><input type="checkbox" value="h2h"><div><div class="mlabel">1X2 Singlar</div><div class="mdesc">Hemma, oavgjort, borta</div></div></label>
             <label class="market-check"><input type="checkbox" value="ou25"><div><div class="mlabel">Over/Under 2.5</div><div class="mdesc">Antal mål i matchen</div></div></label>
             <label class="market-check"><input type="checkbox" value="btts"><div><div class="mlabel">Båda lag gör mål</div><div class="mdesc">Ja / Nej</div></div></label>
+            <label class="market-check"><input type="checkbox" value="ah"><div><div class="mlabel">Asian Handicap</div><div class="mdesc">Spreads ±0.25–±1.5, DC-matris, tröskelvärde 3%</div></div></label>
           </div>
         </div>
 
@@ -265,6 +310,20 @@
           <div id="modelInfo" style="margin-top:10px;font-size:0.78rem;color:var(--text-muted);background:var(--surface2);padding:8px 10px;border-radius:6px;line-height:1.5">
             Beräknar sannolikheter via Poisson-fördelning med formjustering.
           </div>
+        </div>
+
+        <div class="card">
+          <h3>⚡ Datainput</h3>
+          <div class="market-checks">
+            <label class="market-check" id="xgToggleLabel">
+              <input type="checkbox" id="useXg">
+              <div>
+                <div class="mlabel">Använd xG-data</div>
+                <div class="mdesc">Understat (topp 5) → API-Football fallback. Hämtas vid Uppdatera.</div>
+              </div>
+            </label>
+          </div>
+          <div id="xgStatus" style="margin-top:8px;font-size:0.76rem;color:var(--text-muted);display:none"></div>
         </div>
 
         <div class="card">
@@ -362,11 +421,31 @@
           <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px">Bankroll (kr)</label><input type="number" id="kelly-bankroll" placeholder="5000" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:0.85rem"/></div>
         </div>
         <button class="btn btn-sm btn-purple" onclick="calcKelly()">Beräkna Kelly</button>
-        <div class="kelly-box" id="kellyResult" style="display:none">
-          <h4>🎯 Resultat</h4>
-          <div class="kelly-result" id="kellyKr">—</div>
-          <div style="font-size:0.82rem;color:var(--text-muted);margin-top:4px" id="kellySub">—</div>
-          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:6px" id="kellyHalf">—</div>
+        <div id="kellyResult" style="display:none;margin-top:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <!-- Full Kelly -->
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Full Kelly</div>
+              <div id="kellyFull" style="font-size:1.3rem;font-weight:800;color:#c9b1ff">—</div>
+              <div id="kellyFullPct" style="font-size:0.75rem;color:var(--text-muted);margin-top:3px">—</div>
+            </div>
+            <!-- Half Kelly -->
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">½ Kelly</div>
+              <div id="kellyHalfKr" style="font-size:1.3rem;font-weight:800;color:#c9b1ff">—</div>
+              <div id="kellyHalfPct" style="font-size:0.75rem;color:var(--text-muted);margin-top:3px">—</div>
+            </div>
+            <!-- Quarter Kelly — recommended -->
+            <div style="background:rgba(46,160,67,0.12);border:2px solid var(--green-bright);border-radius:8px;padding:12px;text-align:center;position:relative">
+              <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--green-bright);color:#000;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">✅ REKOMMENDERAD</div>
+              <div style="font-size:0.72rem;color:var(--green-bright);margin-bottom:6px;margin-top:4px;text-transform:uppercase;letter-spacing:0.05em">¼ Kelly</div>
+              <div id="kellyQuarterKr" style="font-size:1.3rem;font-weight:800;color:var(--green-bright)">—</div>
+              <div id="kellyQuarterPct" style="font-size:0.75rem;color:var(--text-muted);margin-top:3px">—</div>
+            </div>
+          </div>
+          <div id="kellyEdgeWarn" style="display:none;margin-top:10px;background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.4);border-radius:6px;padding:8px 12px;font-size:0.82rem;color:var(--yellow-bright)">
+            ⚠️ Edge för tunn — ingen insats rekommenderas.
+          </div>
         </div>
       </div>
     </div>
@@ -487,6 +566,43 @@ const DixonColes = {
 };
 
 // ============================================================
+// ASIAN HANDICAP ENGINE
+// ============================================================
+const AH = {
+  // Build score probability matrix (Dixon-Coles corrected)
+  matrix(lH, lA, max=9) {
+    const m = [];
+    for (let i = 0; i <= max; i++) {
+      m[i] = [];
+      for (let j = 0; j <= max; j++) {
+        let p = P.pmf(i, lH) * P.pmf(j, lA);
+        if (i <= 1 && j <= 1) p *= DixonColes.tau(i, j, lH, lA, DixonColes.rho);
+        m[i][j] = p;
+      }
+    }
+    return m;
+  },
+  // P(home covers AH) for a single non-quarter line
+  _prob(mat, p) {
+    let win = 0, push = 0;
+    const t = -p; // home wins if (home_goals - away_goals) > t
+    for (let i = 0; i < mat.length; i++)
+      for (let j = 0; j < mat[i].length; j++) {
+        const d = i - j;
+        if (d > t) win += mat[i][j];
+        else if (p % 1 === 0 && d === t) push += mat[i][j]; // integer line: push possible
+      }
+    return win + 0.5 * push;
+  },
+  // P(home covers AH) for any line incl. quarter lines (±0.25, ±0.75 …)
+  probHome(mat, p) {
+    if (Math.round(p * 4) % 2 !== 0) // quarter line: split 50/50 on adjacent half-lines
+      return 0.5 * this._prob(mat, p - 0.25) + 0.5 * this._prob(mat, p + 0.25);
+    return this._prob(mat, p);
+  }
+};
+
+// ============================================================
 // ELO MODEL
 // ============================================================
 const EloModel = {
@@ -570,6 +686,10 @@ function getActiveModel() {
 
 const LEAGUE_NAMES={soccer_epl:'Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿',soccer_spain_la_liga:'La Liga 🇪🇸',soccer_italy_serie_a:'Serie A 🇮🇹',soccer_germany_bundesliga:'Bundesliga 🇩🇪',soccer_france_ligue_one:'Ligue 1 🇫🇷',soccer_uefa_champs_league:'Champions League ⭐',soccer_uefa_europa_league:'Europa League 🟠',soccer_netherlands_eredivisie:'Eredivisie 🇳🇱',soccer_portugal_primeira_liga:'Primeira Liga 🇵🇹',soccer_belgium_first_div:'Jupiler Pro League 🇧🇪',soccer_turkey_super_league:'Süper Lig 🇹🇷',soccer_scotland_premiership:'Scottish Prem. 🏴󠁧󠁢󠁳󠁣󠁴󠁿',soccer_austria_bundesliga:'Österreich BL 🇦🇹',soccer_greece_super_league:'Super League 🇬🇷',soccer_sweden_allsvenskan:'Allsvenskan 🇸🇪',soccer_norway_eliteserien:'Eliteserien 🇳🇴',soccer_denmark_superliga:'Superligaen 🇩🇰',soccer_finland_veikkausliiga:'Veikkausliiga 🇫🇮'};
 const LEAGUE_AVG={soccer_epl:2.7,soccer_spain_la_liga:2.5,soccer_italy_serie_a:2.6,soccer_germany_bundesliga:3.1,soccer_france_ligue_one:2.5,soccer_uefa_champs_league:2.8,soccer_uefa_europa_league:2.7,soccer_netherlands_eredivisie:3.1,soccer_portugal_primeira_liga:2.5,soccer_belgium_first_div:2.9,soccer_turkey_super_league:2.7,soccer_scotland_premiership:2.7,soccer_austria_bundesliga:3.0,soccer_greece_super_league:2.4,soccer_sweden_allsvenskan:2.7,soccer_norway_eliteserien:2.9,soccer_denmark_superliga:2.8,soccer_finland_veikkausliiga:2.6};
+// xG league averages (expected goals per team per game, top 5 from Understat, others estimated)
+const LEAGUE_XG_AVG={soccer_epl:1.35,soccer_spain_la_liga:1.25,soccer_italy_serie_a:1.20,soccer_germany_bundesliga:1.55,soccer_france_ligue_one:1.25,soccer_uefa_champs_league:1.40,soccer_uefa_europa_league:1.35,soccer_netherlands_eredivisie:1.55,soccer_portugal_primeira_liga:1.25,soccer_belgium_first_div:1.45,soccer_turkey_super_league:1.35,soccer_scotland_premiership:1.35,soccer_austria_bundesliga:1.50,soccer_greece_super_league:1.20,soccer_sweden_allsvenskan:1.35,soccer_norway_eliteserien:1.45,soccer_denmark_superliga:1.40,soccer_finland_veikkausliiga:1.30};
+// Understat league URL identifiers (top 5 only)
+const UNDERSTAT_LEAGUE={soccer_epl:'EPL',soccer_spain_la_liga:'La_Liga',soccer_italy_serie_a:'Serie_A',soccer_germany_bundesliga:'Bundesliga',soccer_france_ligue_one:'Ligue_1'};
 
 const P={
   pmf(k,l){let r=-l+k*Math.log(l);for(let i=1;i<=k;i++)r-=Math.log(i);return Math.exp(r);},
@@ -582,6 +702,101 @@ const P={
   val(mktOdds,prob){return((mktOdds/(1/prob))-1)*100;}
 };
 
+// ============================================================
+// xG DATA ENGINE (Understat via CORS proxy → API-Football fallback)
+// ============================================================
+const XGStore = {
+  TTL: 86400000, // 24h
+  get(k) { const c=S.get('xgData',{}),v=c[k]; return v&&Date.now()-v.ts<this.TTL?v.data:null; },
+  set(k,d) { const c=S.get('xgData',{}); c[k]={data:d,ts:Date.now()}; S.set('xgData',c); },
+  clear() { S.del('xgData'); showToast('xG-cache rensad.'); }
+};
+
+// Time-weighted xG average (τ=0.005 per match, newest = weight 1.0)
+function calcWeightedXG(history, n=10) {
+  if (!history?.length) return null;
+  const recent = history.slice(-n);
+  const tau = 0.005;
+  let swFor=0, swAgainst=0, sw=0;
+  recent.forEach((m, i) => {
+    const w = Math.exp(-tau * (recent.length - 1 - i)); // i=0 oldest, i=n-1 newest
+    swFor     += parseFloat(m.xg  || m.xG  || 0) * w;
+    swAgainst += parseFloat(m.xga || m.xGA || 0) * w;
+    sw += w;
+  });
+  if (sw === 0) return null;
+  return { xgFor: swFor/sw, xgAgainst: swAgainst/sw, nMatches: recent.length, thin: recent.length < 5, source: 'understat' };
+}
+
+// Fetch Understat league page via allorigins CORS proxy, extract teamsData
+async function fetchUnderstatsLeague(leagueKey) {
+  const cached = XGStore.get('ul_'+leagueKey);
+  if (cached) return cached;
+  const leagueName = UNDERSTAT_LEAGUE[leagueKey];
+  if (!leagueName) return null;
+  // Season: use current year if Aug–Dec, else previous year (season starts in Aug)
+  const now = new Date();
+  const season = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  const url = `https://understat.com/league/${leagueName}/${season}`;
+  try {
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return null;
+    const json = await r.json();
+    const html = json.contents || '';
+    // Extract teamsData JSON embedded in page as: var teamsData = JSON.parse('...')
+    const m = html.match(/var teamsData\s*=\s*JSON\.parse\('([\s\S]+?)'\)\s*;/);
+    if (!m) return null;
+    // Decode hex/unicode escapes then parse
+    const decoded = m[1].replace(/\\x([0-9A-Fa-f]{2})/g, (_,h) => String.fromCharCode(parseInt(h,16)))
+                         .replace(/\\u([0-9A-Fa-f]{4})/g, (_,h) => String.fromCharCode(parseInt(h,16)));
+    const teamsData = JSON.parse(decoded);
+    // Build result: { normalizedTeamName → xgData }
+    const result = {};
+    for (const [, team] of Object.entries(teamsData)) {
+      const xg = calcWeightedXG(team.history);
+      if (xg) result[team.title.toLowerCase().trim()] = { ...xg, fullTitle: team.title };
+    }
+    XGStore.set('ul_'+leagueKey, result);
+    return result;
+  } catch(e) {
+    console.warn('Understat fetch failed for', leagueKey, ':', e.message);
+    return null;
+  }
+}
+
+// Fuzzy name match between The Odds API team names and Understat names
+function matchTeamXG(oddsName, xgMap) {
+  if (!xgMap) return null;
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/\s+/g,'');
+  const key = norm(oddsName);
+  // 1. Direct key match
+  if (xgMap[oddsName.toLowerCase().trim()]) return xgMap[oddsName.toLowerCase().trim()];
+  // 2. Normalized match
+  for (const [k, v] of Object.entries(xgMap)) {
+    if (norm(k) === key) return v;
+  }
+  // 3. Substring match
+  for (const [k, v] of Object.entries(xgMap)) {
+    const nk = norm(k);
+    if (nk.includes(key) || key.includes(nk)) return v;
+  }
+  return null;
+}
+
+// Build xG attack/defense ratings for a team relative to league average
+function buildXGRatings(xgData, leagueKey) {
+  if (!xgData) return null;
+  const avg = LEAGUE_XG_AVG[leagueKey] || 1.30;
+  return {
+    attackRating:  xgData.xgFor      / avg,
+    defenseRating: xgData.xgAgainst  / avg,
+    nMatches: xgData.nMatches,
+    thin: xgData.thin,
+    source: xgData.source
+  };
+}
+
 function simStats(h,a){
   const seed=s=>{let x=0;for(let c of s)x=Math.imul(31,x)+c.charCodeAt(0);return Math.abs(x);};
   const rng=(s,lo,hi)=>lo+(seed(s)%100)/100*(hi-lo);
@@ -589,7 +804,7 @@ function simStats(h,a){
   return{home:{avgGoalsScored:rng(h+'hs',1.1,2.2),avgGoalsConceded:rng(h+'hc',0.7,1.8),form:gf(h+'f'),homeRecord:{w:seed(h+'hw')%8+3,d:seed(h+'hd')%5+1,l:seed(h+'hl')%5+1}},away:{avgGoalsScored:rng(a+'as',0.9,1.9),avgGoalsConceded:rng(a+'ac',0.9,2.0),form:gf(a+'f'),awayRecord:{w:seed(a+'aw')%6+1,d:seed(a+'ad')%4+1,l:seed(a+'al')%7+2}}};
 }
 
-function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache={}){
+function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache={},xgLeagueData=null){
   const ligaAvg=LEAGUE_AVG[league]||2.6,kickoff=new Date(game.commence_time);
   if(kickoff<new Date())return[];
   // Use real stats if available, otherwise simulate
@@ -612,8 +827,30 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realS
       source: cachedA.source
     } : sim.away
   };
-  const lH=(stats.home.avgGoalsScored/(ligaAvg/2))*(stats.away.avgGoalsConceded/(ligaAvg/2))*(ligaAvg/2)*P.ff(stats.home.form);
-  const lA=(stats.away.avgGoalsScored/(ligaAvg/2))*(stats.home.avgGoalsConceded/(ligaAvg/2))*(ligaAvg/2)*P.ff(stats.away.form);
+
+  // --- xG-based lambda (if available and toggle is on) ---
+  const useXg = document.getElementById('useXg')?.checked;
+  const xgMapH = xgLeagueData ? matchTeamXG(game.home_team, xgLeagueData) : null;
+  const xgMapA = xgLeagueData ? matchTeamXG(game.away_team, xgLeagueData) : null;
+  const ratH = useXg ? buildXGRatings(xgMapH, league) : null;
+  const ratA = useXg ? buildXGRatings(xgMapA, league) : null;
+  const leagueXgAvg = LEAGUE_XG_AVG[league] || 1.30;
+
+  let lH, lA, xgSource, thinData, nMatchesXG;
+  if (ratH && ratA) {
+    // Dixon-Coles attack/defense model with xG
+    lH = ratH.attackRating * ratA.defenseRating * leagueXgAvg * 1.10; // ~10% home advantage
+    lA = ratA.attackRating * ratH.defenseRating * leagueXgAvg;
+    xgSource = 'understat';
+    thinData = ratH.thin || ratA.thin;
+    nMatchesXG = Math.min(ratH.nMatches, ratA.nMatches);
+  } else {
+    // Fallback: actual goals
+    lH=(stats.home.avgGoalsScored/(ligaAvg/2))*(stats.away.avgGoalsConceded/(ligaAvg/2))*(ligaAvg/2)*P.ff(stats.home.form);
+    lA=(stats.away.avgGoalsScored/(ligaAvg/2))*(stats.home.avgGoalsConceded/(ligaAvg/2))*(ligaAvg/2)*P.ff(stats.away.form);
+    xgSource = cachedH?.source === 'api-football' ? 'api-football' : 'sim';
+    thinData = false; nMatchesXG = null;
+  }
 
   // Select model outcomes
   let pH, pX, pA, pO25, pBtts;
@@ -632,7 +869,7 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realS
     pBtts = P.btts(lH,lA);
   }
   const results=[];
-  const raw1x2={},rawOU={},rawBTTS={};
+  const raw1x2={},rawOU={},rawBTTS={},rawAH={};
   for(const bk of game.bookmakers||[]){
     const m1=bk.markets?.find(m=>m.key==='h2h');
     if(m1){const hm=m1.outcomes.find(o=>o.name===game.home_team)?.price,dr=m1.outcomes.find(o=>o.name==='Draw')?.price,aw=m1.outcomes.find(o=>o.name===game.away_team)?.price;if(hm&&dr&&aw)raw1x2[bk.title]={home:hm,draw:dr,away:aw};}
@@ -640,6 +877,8 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realS
     if(mU){const ov=mU.outcomes.find(o=>o.name==='Over'&&o.point===2.5)?.price,un=mU.outcomes.find(o=>o.name==='Under'&&o.point===2.5)?.price;if(ov&&un)rawOU[bk.title]={over:ov,under:un};}
     const mB=bk.markets?.find(m=>m.key==='btts');
     if(mB){const y=mB.outcomes.find(o=>o.name==='Yes')?.price,n=mB.outcomes.find(o=>o.name==='No')?.price;if(y&&n)rawBTTS[bk.title]={yes:y,no:n};}
+    const mAH=bk.markets?.find(m=>m.key==='spreads');
+    if(mAH){const ho=mAH.outcomes.find(o=>o.name===game.home_team),ao=mAH.outcomes.find(o=>o.name===game.away_team);if(ho&&ao&&ho.point!=null)rawAH[bk.title]={homePoint:ho.point,homeOdds:ho.price,awayPoint:ao.point,awayOdds:ao.price};}
   }
   // Market-implicit: override pH/pX/pA with consensus probs
   if (activeModel === 'market' && Object.keys(raw1x2).length) {
@@ -648,7 +887,14 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realS
   }
 
   const modelTag = activeModel==='dixon'?'DC-corr':activeModel==='elo'?'Elo':activeModel==='market'?'Mkt':'Poisson';
-  const base={homeTeam:game.home_team,awayTeam:game.away_team,league:LEAGUE_NAMES[league]||league,leagueKey:league,kickoff,stats,formScoreHome:P.fs(stats.home.form),formScoreAway:P.fs(stats.away.form),pH:Math.round(pH*1000)/10,pX:Math.round(pX*1000)/10,pA:Math.round(pA*1000)/10,lH:Math.round(lH*100)/100,lA:Math.round(lA*100)/100,modelTag,teamIdHome:cachedH?.teamId||null,teamIdAway:cachedA?.teamId||null,h2h:null,h2hLoaded:false};
+
+  // Odds-implied consensus probabilities (margin-adjusted average across all bookmakers)
+  const impliedProbs = Object.keys(raw1x2).length >= 2 ? MarketImplicit.consensus(raw1x2) : null;
+  const iPH = impliedProbs ? Math.round(impliedProbs.pH*1000)/10 : null;
+  const iPX = impliedProbs ? Math.round(impliedProbs.pX*1000)/10 : null;
+  const iPA = impliedProbs ? Math.round(impliedProbs.pA*1000)/10 : null;
+
+  const base={gameId:game.id,homeTeam:game.home_team,awayTeam:game.away_team,league:LEAGUE_NAMES[league]||league,leagueKey:league,kickoff,stats,formScoreHome:P.fs(stats.home.form),formScoreAway:P.fs(stats.away.form),pH:Math.round(pH*1000)/10,pX:Math.round(pX*1000)/10,pA:Math.round(pA*1000)/10,lH:Math.round(lH*100)/100,lA:Math.round(lA*100)/100,modelTag,teamIdHome:cachedH?.teamId||null,teamIdAway:cachedA?.teamId||null,h2h:null,h2hLoaded:false,impliedPH:iPH,impliedPX:iPX,impliedPA:iPA,xgSource,thinData,nMatchesXG};
   const push=(id,market,dcType,prob,bkOdds)=>{if(!bkOdds.length)return;const best=bkOdds.reduce((a,b)=>b.odds>a.odds?b:a);const vp=Math.round(P.val(best.odds,prob)*10)/10;results.push({...base,id,market,dcType,bestOdds:best.odds,bestBk:best.bk,trueOdds:Math.round((1/prob)*100)/100,valuePct:vp,modelProb:Math.round(prob*1000)/10,allBkOdds:bkOdds});};
   const mkBk=(rawSrc,fn,min,max)=>Object.keys(rawSrc).map(bk=>{const o=fn(rawSrc[bk]);return o&&o>=min&&o<=max?{bk,odds:o}:null;}).filter(Boolean);
   if(activeMarkets.includes('dc')&&Object.keys(raw1x2).length){
@@ -665,6 +911,29 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realS
   }
   if(activeMarkets.includes('btts')&&Object.keys(rawBTTS).length){
     [['y','BTTS Ja',pBtts,r=>r.yes],['n','BTTS Nej',1-pBtts,r=>r.no]].forEach(([k,lbl,prob,fn])=>push(`${game.id}-btts-${k}`,'BTTS',lbl,prob,mkBk(rawBTTS,fn,oddsMin,oddsMax)));
+  }
+  if(activeMarkets.includes('ah')&&Object.keys(rawAH).length){
+    const ahMat=AH.matrix(lH,lA);
+    // Group bookmakers by home-team AH line
+    const lineMap={};
+    for(const[bk,r]of Object.entries(rawAH)){
+      const hp=r.homePoint;
+      if(!lineMap[hp])lineMap[hp]={homeBks:[],awayBks:[]};
+      if(r.homeOdds>=oddsMin&&r.homeOdds<=oddsMax)lineMap[hp].homeBks.push({bk,odds:r.homeOdds});
+      if(r.awayOdds>=oddsMin&&r.awayOdds<=oddsMax)lineMap[hp].awayBks.push({bk,odds:r.awayOdds});
+    }
+    for(const[hpStr,bkData]of Object.entries(lineMap)){
+      const hp=parseFloat(hpStr);
+      if(Math.abs(hp)<0.15||Math.abs(hp)>1.55)continue; // filter to ±0.25–±1.5
+      const pHome=AH.probHome(ahMat,hp);
+      const pAway=1-pHome;
+      // Use *4 integer as id suffix to avoid dots/minus in DOM ids
+      const sfx=Math.round(hp*4);
+      const hSign=hp>=0?'+':'';
+      const aSign=(-hp)>=0?'+':'';
+      if(bkData.homeBks.length)push(`${game.id}-ah-h${sfx}`,'AH',`Home ${hSign}${hp}`,pHome,bkData.homeBks);
+      if(bkData.awayBks.length)push(`${game.id}-ah-a${sfx}`,'AH',`Away ${aSign}${-hp}`,pAway,bkData.awayBks);
+    }
   }
   return results;
 }
@@ -871,6 +1140,69 @@ function renderEloTable() {
   el.innerHTML = `<table class="history-table"><thead><tr><th>#</th><th>Lag</th><th>Elo-betyg</th><th>Nivå</th></tr></thead><tbody>${top.map(([team,rating],i)=>`<tr><td style="color:var(--text-muted)">${i+1}</td><td>${team}</td><td style="font-weight:700;color:${rating>=1600?'var(--green-bright)':rating>=1500?'var(--yellow-bright)':'var(--text-muted)'}">${rating}</td><td>${rating>=1700?'🏆 Elit':rating>=1600?'⭐ Stark':rating>=1500?'📊 Normal':rating>=1400?'📉 Svag':'⚠️ Dålig'}</td></tr>`).join('')}</tbody></table>`;
 }
 
+// ============================================================
+// SOFT FACTORS (Tony Bloom-metoden)
+// ============================================================
+const SF_BUTTONS = [
+  { key: 'injury',     label: '🤕 Skada',     homeEffect: -3 },
+  { key: 'motivation', label: '🔥 Motivation', homeEffect: +3 },
+  { key: 'fatigue',    label: '😴 Trötthet',  homeEffect: -2 },
+  { key: 'coach',      label: '👔 Ny tränare', homeEffect: +2 },
+];
+
+// Returns +1 if market favours home team, -1 if away, 0 if neutral
+function sfDirection(dcType) {
+  if (!dcType) return 0;
+  if (dcType === '1X (DC)' || dcType === '1 (Hemma)' || dcType.startsWith('Home ')) return 1;
+  if (dcType === 'X2 (DC)' || dcType === '2 (Borta)' || dcType.startsWith('Away ')) return -1;
+  return 0; // 12 DC, X, O/U, BTTS
+}
+
+const SoftFactors = {
+  get(id)     { return S.get('sf', {})[id] || { slider: 0 }; },
+  set(id, d)  { const a = S.get('sf', {}); a[id] = d; S.set('sf', a); },
+  total(id, dcType) {
+    const d = this.get(id), dir = sfDirection(dcType);
+    let t = parseFloat(d.slider) || 0;
+    for (const btn of SF_BUTTONS) {
+      const side = d[btn.key];
+      if (side && dir !== 0)
+        t += btn.homeEffect * (side === 'H' ? 1 : -1) * dir;
+    }
+    return Math.max(-5, Math.min(5, t));
+  }
+};
+
+function updateSF(id) {
+  const m = state.matches.find(x => x.id === id); if (!m) return;
+  const sliderEl = document.getElementById('sf-slider-' + id); if (!sliderEl) return;
+  const sliderVal = parseFloat(sliderEl.value) || 0;
+  const sfData = { slider: sliderVal };
+  for (const btn of SF_BUTTONS) {
+    const hActive = document.getElementById('sf-btn-' + btn.key + '-H-' + id)?.classList.contains('active-h');
+    const aActive = document.getElementById('sf-btn-' + btn.key + '-A-' + id)?.classList.contains('active-a');
+    sfData[btn.key] = hActive ? 'H' : aActive ? 'A' : null;
+  }
+  SoftFactors.set(id, sfData);
+  const sfT = SoftFactors.total(id, m.dcType);
+  const adjProb = Math.max(1, Math.min(99, m.modelProb + sfT));
+  const newVal = Math.round(P.val(m.bestOdds, adjProb / 100) * 10) / 10;
+  const sliderValEl = document.getElementById('sf-sliderval-' + id);
+  const adjEl  = document.getElementById('sf-adj-'    + id);
+  const nvEl   = document.getElementById('sf-newval-' + id);
+  if (sliderValEl) sliderValEl.textContent = (sliderVal > 0 ? '+' : '') + sliderVal.toFixed(1) + '%';
+  if (adjEl)  { adjEl.textContent = adjProb.toFixed(1) + '%'; adjEl.style.color = sfT > 0 ? 'var(--green-bright)' : sfT < 0 ? '#ff7b72' : 'var(--text-muted)'; }
+  if (nvEl)   { nvEl.textContent = (newVal > 0 ? '+' : '') + newVal + '%'; nvEl.style.color = newVal >= 5 ? 'var(--green-bright)' : newVal > 0 ? 'var(--yellow-bright)' : '#ff7b72'; }
+}
+
+function toggleSFBtn(id, key, side) {
+  const hEl = document.getElementById('sf-btn-' + key + '-H-' + id);
+  const aEl = document.getElementById('sf-btn-' + key + '-A-' + id);
+  if (side === 'H') { const was = hEl?.classList.contains('active-h'); hEl?.classList.toggle('active-h', !was); aEl?.classList.remove('active-a'); }
+  else              { const was = aEl?.classList.contains('active-a'); aEl?.classList.toggle('active-a', !was); hEl?.classList.remove('active-h'); }
+  updateSF(id);
+}
+
 async function fetchAllOdds(){
   if(location.protocol==='file:'){document.getElementById('matchList').innerHTML=`<div style="background:rgba(218,54,51,0.1);border:1px solid #da3633;border-radius:8px;padding:20px 24px;line-height:1.8"><div style="font-size:1.1rem;font-weight:700;color:#ff7b72;margin-bottom:10px">⚠️ Lokal server krävs</div><p style="color:var(--text);margin-bottom:12px">Öppna terminalen och kör:</p><div style="background:var(--surface2);border-radius:6px;padding:12px;font-family:monospace;font-size:0.9rem;color:var(--green-bright)">python3 -m http.server 8080</div><p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px">Öppna sedan <strong style="color:var(--blue-bright)">http://localhost:8080</strong></p></div>`;return;}
   if(!state.oddsKey){document.getElementById('key-banner').classList.add('show');showToast('API-nyckel saknas!','error');return;}
@@ -880,13 +1212,36 @@ async function fetchAllOdds(){
   const activeLeagues=[...document.querySelectorAll('#leagueChecks input:checked')].map(x=>x.value);
   const activeMarkets=[...document.querySelectorAll('.market-check input:checked')].map(x=>x.value);
   const activeModel=getActiveModel();
-  const mktParam=['h2h',...(activeMarkets.includes('ou25')?['totals']:[]),...(activeMarkets.includes('btts')?['btts']:[])].join(',');
+  const mktParam=['h2h',...(activeMarkets.includes('ou25')?['totals']:[]),...(activeMarkets.includes('btts')?['btts']:[]),...(activeMarkets.includes('ah')?['spreads']:[])].join(',');
   const allMatches=[];let errors=0,corsErr=false;
   // Reset and pre-fetch real stats if Football API key exists
   realStatsCache = {};
   if(state.footballKey) {
     try { await prefetchFootballStats(activeLeagues, realStatsCache); } catch(e) { console.warn('Football API error:',e); }
   }
+  // Pre-fetch Understat xG data for top-5 leagues if toggle is on
+  const xgLeagueCache = {}; // { leagueKey: { teamName: xgData } }
+  const useXg = document.getElementById('useXg')?.checked;
+  if (useXg) {
+    const xgStatus = document.getElementById('xgStatus');
+    if (xgStatus) { xgStatus.style.display='block'; xgStatus.textContent='⏳ Hämtar xG-data från Understat...'; }
+    let xgOk=0, xgFail=0;
+    for (const lg of activeLeagues.filter(l => UNDERSTAT_LEAGUE[l])) {
+      try {
+        const d = await fetchUnderstatsLeague(lg);
+        if (d) { xgLeagueCache[lg] = d; xgOk++; }
+        else xgFail++;
+      } catch(e) { xgFail++; }
+    }
+    if (xgStatus) {
+      if (xgOk > 0) xgStatus.textContent = `✅ xG-data hämtad för ${xgOk} liga(or)${xgFail>0?' ('+xgFail+' misslyckades — fallback till mål)':''}.`;
+      else xgStatus.textContent = '⚠️ xG-data ej tillgänglig — använder faktiska mål.';
+    }
+  } else {
+    const xgStatus = document.getElementById('xgStatus');
+    if (xgStatus) xgStatus.style.display='none';
+  }
+
   for(const league of activeLeagues){
     try{
       const r=await fetch(`https://api.the-odds-api.com/v4/sports/${league}/odds/?apiKey=${state.oddsKey}&regions=eu&markets=${mktParam}&oddsFormat=decimal`);
@@ -896,7 +1251,8 @@ async function fetchAllOdds(){
       const used=r.headers.get('x-requests-used');
       if(remaining!==null||used!==null) updateReqCounter(used,remaining);
       const data=await r.json();
-      for(const game of data)allMatches.push(...processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache));
+      const xgData = xgLeagueCache[league] || null;
+      for(const game of data)allMatches.push(...processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache,xgData));
     }catch(e){if(e.message==='Failed to fetch')corsErr=true;errors++;}
   }
   if(allMatches.filter(m=>m.valuePct>=5).length>0) playSound();state.matches=allMatches;state.lastUpdated=new Date();
@@ -909,7 +1265,7 @@ function renderMatches(){
   const el=document.getElementById('matchList');
   const oddsMin=parseFloat(document.getElementById('oddsMin').value),oddsMax=parseFloat(document.getElementById('oddsMax').value),minV=parseFloat(document.getElementById('minValue').value),sort=document.getElementById('sortBy').value;
   const activeLeagues=[...document.querySelectorAll('#leagueChecks input:checked')].map(x=>x.value);
-  let ms=state.matches.filter(m=>activeLeagues.includes(m.leagueKey)&&m.bestOdds>=oddsMin&&m.bestOdds<=oddsMax&&m.valuePct>=minV);
+  let ms=state.matches.filter(m=>{const thr=m.market==='AH'?Math.max(3,minV):minV;return activeLeagues.includes(m.leagueKey)&&m.bestOdds>=oddsMin&&m.bestOdds<=oddsMax&&m.valuePct>=thr;});
   if(sort==='value')ms.sort((a,b)=>b.valuePct-a.valuePct);else if(sort==='odds')ms.sort((a,b)=>a.bestOdds-b.bestOdds);else if(sort==='form')ms.sort((a,b)=>(b.formScoreHome+b.formScoreAway)-(a.formScoreHome+a.formScoreAway));else ms.sort((a,b)=>a.kickoff-b.kickoff);
   document.getElementById('stat-scanned').textContent=state.matches.length;
   document.getElementById('stat-value').textContent=state.matches.filter(m=>m.valuePct>=5).length;
@@ -918,7 +1274,7 @@ function renderMatches(){
   document.getElementById('stat-best').textContent=best?`+${best.valuePct}%`:'—';
   if(state.lastUpdated)document.getElementById('stat-updated').textContent=state.lastUpdated.toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'});
   if(!ms.length){el.innerHTML=`<div class="empty-state"><div class="icon">🤷</div><p>Inga matcher matchar dina filter. Prova att justera oddsspann, Value % eller välj fler marknader.</p></div>`;return;}
-  const mktColor=m=>m.market==='DC'?'badge-green':m.market==='1X2'?'badge-blue':m.market==='O/U 2.5'?'badge-yellow':'badge-purple';
+  const mktColor=m=>m.market==='DC'?'badge-green':m.market==='1X2'?'badge-blue':m.market==='O/U 2.5'?'badge-yellow':m.market==='AH'?'badge-ah':'badge-purple';
   el.innerHTML=ms.map(m=>`
   <div class="match-card ${m.valuePct>=10?'value-strong':m.valuePct>=5?'value-ok':''}" id="card-${m.id}">
     <div class="match-header" onclick="toggleDetail('${m.id}')">
@@ -975,6 +1331,19 @@ function renderMatches(){
             <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px">Value-styrka</div>
             <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,Math.max(0,m.valuePct*5))}%;background:${m.valuePct>=10?'var(--green-bright)':m.valuePct>=5?'var(--yellow-bright)':'var(--text-muted)'}"></div></div>
           </div>
+          ${m.impliedPH!==null?`
+          <div class="xg-strip">
+            <div class="xg-strip-title">
+              📊 Modell vs Marknad
+              ${m.xgSource==='understat'?'<span class="badge badge-green" style="font-size:0.65rem">⚡ xG Understat</span>':m.xgSource==='api-football'?'<span class="badge badge-blue" style="font-size:0.65rem">📡 API-Football</span>':'<span class="badge badge-gray" style="font-size:0.65rem">🎲 Simulerad</span>'}
+              ${m.thinData?'<span class="badge badge-orange" style="font-size:0.65rem">⚠️ Tunt underlag</span>':''}
+              ${m.nMatchesXG?`<span style="font-size:0.65rem;color:var(--text-muted)">(${m.nMatchesXG} matcher)</span>`:''}
+            </div>
+            <div class="xg-row"><span class="xg-label"></span><span style="text-align:center;font-size:0.7rem;color:var(--text-muted)">Hemma</span><span style="text-align:center;font-size:0.7rem;color:var(--text-muted)">Oavgjort</span><span style="text-align:center;font-size:0.7rem;color:var(--text-muted)">Borta</span></div>
+            <div class="xg-row"><span class="xg-label">${m.modelTag}</span><span class="xg-cell model">${m.pH}%</span><span class="xg-cell model">${m.pX}%</span><span class="xg-cell model">${m.pA}%</span></div>
+            <div class="xg-row"><span class="xg-label">Marknad</span><span class="xg-cell implied">${m.impliedPH}%</span><span class="xg-cell implied">${m.impliedPX}%</span><span class="xg-cell implied">${m.impliedPA}%</span></div>
+            <div class="xg-row"><span class="xg-label">Edge</span>${['pH','pX','pA'].map((k,i)=>{const e=Math.round((m[k]-(m[['impliedPH','impliedPX','impliedPA'][i]]))*10)/10;return`<span class="xg-cell ${e>1?'edge-pos':e<-1?'edge-neg':'edge-neu'}">${e>0?'+':''}${e}pp</span>`}).join('')}</div>
+          </div>`:''}
         </div>
         <div class="detail-section">
           <h4>🏦 Spelbolag</h4>
@@ -991,6 +1360,27 @@ function renderMatches(){
         <div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">⚔️ Senaste möten (H2H)</div>
         <div id="h2h-${m.id}"><span style="color:var(--text-muted);font-size:0.8rem">Expandera kortet för att ladda H2H-historik...</span></div>
       </div>`:''}
+      ${(()=>{
+        const sfData=SoftFactors.get(m.id);
+        const sfT=SoftFactors.total(m.id,m.dcType);
+        const sfDir=sfDirection(m.dcType);
+        const adjProb=Math.max(1,Math.min(99,m.modelProb+sfT));
+        const newVal=Math.round(P.val(m.bestOdds,adjProb/100)*10)/10;
+        return `<div class="sf-panel" style="margin-top:14px">
+          <div class="sf-panel-title">🎛️ Soft Factor-justering <span class="badge badge-purple" style="font-size:0.6rem;padding:1px 6px">Tony Bloom</span></div>
+          <div class="sf-slider-row">
+            <span style="font-size:0.78rem;color:var(--text-muted)">Justering:</span>
+            <input type="range" id="sf-slider-${m.id}" min="-5" max="5" step="0.5" value="${sfData.slider||0}" oninput="updateSF('${m.id}')">
+            <span class="sf-slider-val" id="sf-sliderval-${m.id}">${((sfData.slider||0)>0?'+':'')+(sfData.slider||0).toFixed(1)}%</span>
+          </div>
+          ${sfDir!==0?`<div class="sf-btns">${SF_BUTTONS.map(btn=>{const side=sfData[btn.key];return`<div class="sf-btn-group"><span class="sf-btn-label">${btn.label}</span><div class="sf-btn-sides"><button class="sf-btn ${side==='H'?'active-h':''}" id="sf-btn-${btn.key}-H-${m.id}" onclick="toggleSFBtn('${m.id}','${btn.key}','H')">H</button><button class="sf-btn ${side==='A'?'active-a':''}" id="sf-btn-${btn.key}-A-${m.id}" onclick="toggleSFBtn('${m.id}','${btn.key}','A')">B</button></div></div>`;}).join('')}</div>`:'<div style="font-size:0.76rem;color:var(--text-muted);margin-bottom:10px">⚠️ Neutral marknad — snabbknappar ej tillgängliga. Använd slidern.</div>'}
+          <div class="sf-result">
+            <div class="sf-result-box"><div class="sf-result-val" style="color:#c9b1ff">${m.modelProb}%</div><div class="sf-result-lbl">Modell</div></div>
+            <div class="sf-result-box"><div class="sf-result-val" id="sf-adj-${m.id}" style="color:${sfT>0?'var(--green-bright)':sfT<0?'#ff7b72':'var(--text-muted)'}">${adjProb.toFixed(1)}%</div><div class="sf-result-lbl">Justerat</div></div>
+            <div class="sf-result-box"><div class="sf-result-val" id="sf-newval-${m.id}" style="color:${newVal>=5?'var(--green-bright)':newVal>0?'var(--yellow-bright)':'#ff7b72'}">${newVal>0?'+':''}${newVal}%</div><div class="sf-result-lbl">Justerat värde</div></div>
+          </div>
+        </div>`;
+      })()}
     </div>
   </div>`).join('');
 }
@@ -1049,10 +1439,46 @@ function delHistory(i){state.history.splice(i,1);S.set('valueHistory',state.hist
 function calcKelly(){
   const odds=parseFloat(document.getElementById('kelly-odds').value),prob=parseFloat(document.getElementById('kelly-prob').value)/100,br=parseFloat(document.getElementById('kelly-bankroll').value)||state.bankroll;
   if(!odds||!prob){showToast('Fyll i odds och sannolikhet.','warning');return;}
-  const b=odds-1,q=1-prob,f=(b*prob-q)/b,box=document.getElementById('kellyResult');
+  const b=odds-1,q=1-prob,f=(b*prob-q)/b;
+  const box=document.getElementById('kellyResult');
   box.style.display='block';
-  if(f<=0){document.getElementById('kellyKr').textContent='Ingen insats';document.getElementById('kellySub').textContent='Negativt edge — hoppa över.';document.getElementById('kellyHalf').textContent='';}
-  else{const kr=Math.round(f*br),half=Math.round(f*0.5*br);document.getElementById('kellyKr').textContent=`${kr} kr`;document.getElementById('kellySub').textContent=`Full Kelly: ${(f*100).toFixed(1)}% av bankroll`;document.getElementById('kellyHalf').textContent=`½ Kelly (rekommenderat): ${half} kr`;}
+  const warn=document.getElementById('kellyEdgeWarn');
+
+  const fmt=(frac)=>{
+    const kr=Math.round(f*frac*br);
+    const pct=(f*frac*100).toFixed(1);
+    // Under 1% av bankroll = edge för tunn
+    if(f*frac*100 < 1) return {kr:null,pct};
+    return {kr,pct};
+  };
+
+  if(f<=0){
+    // Negativt edge
+    ['kellyFull','kellyHalfKr','kellyQuarterKr'].forEach(id=>document.getElementById(id).textContent='—');
+    ['kellyFullPct','kellyHalfPct','kellyQuarterPct'].forEach(id=>document.getElementById(id).textContent='Negativt edge');
+    warn.style.display='block';
+    warn.textContent='⚠️ Negativt edge — ingen insats rekommenderas.';
+  } else {
+    warn.style.display='none';
+    const full=fmt(1), half=fmt(0.5), quarter=fmt(0.25);
+    // Full Kelly
+    document.getElementById('kellyFull').textContent = full.kr!==null?`${full.kr} kr`:'—';
+    document.getElementById('kellyFullPct').textContent = `${full.pct}% av bankroll`;
+    // Half Kelly
+    document.getElementById('kellyHalfKr').textContent = half.kr!==null?`${half.kr} kr`:'—';
+    document.getElementById('kellyHalfPct').textContent = `${half.pct}% av bankroll`;
+    // Quarter Kelly
+    if(quarter.kr!==null){
+      document.getElementById('kellyQuarterKr').textContent = `${quarter.kr} kr`;
+      document.getElementById('kellyQuarterPct').textContent = `${quarter.pct}% av bankroll`;
+      warn.style.display='none';
+    } else {
+      document.getElementById('kellyQuarterKr').textContent = '—';
+      document.getElementById('kellyQuarterPct').textContent = `${quarter.pct}% — för tunn`;
+      warn.style.display='block';
+      warn.textContent='⚠️ Edge för tunn — ingen insats rekommenderas (¼ Kelly < 1% av bankroll).';
+    }
+  }
 }
 function prefillKelly(id){
   const m=state.matches.find(x=>x.id===id);if(!m)return;
@@ -1101,6 +1527,7 @@ document.getElementById('sortBy').addEventListener('change',renderMatches);
 document.querySelectorAll('#leagueChecks input').forEach(cb=>cb.addEventListener('change',renderMatches));
 document.querySelectorAll('.market-check input').forEach(cb=>cb.addEventListener('change',renderMatches));
 document.getElementById('exportCsvBtn').addEventListener('click',exportCsv);
+document.getElementById('useXg')?.addEventListener('change', () => { renderMatches(); });
 document.getElementById('exportHistoryBtn').addEventListener('click',exportHistory);
 document.getElementById('clearHistoryBtn').addEventListener('click',()=>{if(confirm('Rensa all historik?')){state.history=[];S.del('valueHistory');renderHistory();}});
 document.getElementById('addRoiBtn').addEventListener('click',()=>{
