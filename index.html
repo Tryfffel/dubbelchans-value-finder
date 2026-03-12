@@ -740,7 +740,8 @@ async function fetchUnderstatsLeague(leagueKey) {
   const url = `https://understat.com/league/${leagueName}/${season}`;
   try {
     const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+    const ctrl = new AbortController(); const tid = setTimeout(()=>ctrl.abort(), 10000);
+    const r = await fetch(proxy, { signal: ctrl.signal }).finally(()=>clearTimeout(tid));
     if (!r.ok) return null;
     const json = await r.json();
     const html = json.contents || '';
