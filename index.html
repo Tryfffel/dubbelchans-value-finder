@@ -684,6 +684,15 @@ function getActiveModel() {
   return r ? r.value : 'poisson';
 }
 
+// ============================================================
+// SWEDISH BOOKMAKERS WHITELIST
+// ============================================================
+const SWEDISH_BOOKMAKERS = ['bet365','unibet','betsson','comeon','come on','betway','pinnacle','888sport'];
+function isSwedishBk(title) {
+  const n = title.toLowerCase().replace(/[^a-z0-9]/g,'');
+  return SWEDISH_BOOKMAKERS.some(s => { const sn=s.replace(/[^a-z0-9]/g,''); return n===sn||n.includes(sn)||sn.includes(n); });
+}
+
 const LEAGUE_NAMES={soccer_epl:'Premier League 🏴󠁧󠁢󠁥󠁮󠁧󠁿',soccer_spain_la_liga:'La Liga 🇪🇸',soccer_italy_serie_a:'Serie A 🇮🇹',soccer_germany_bundesliga:'Bundesliga 🇩🇪',soccer_france_ligue_one:'Ligue 1 🇫🇷',soccer_uefa_champs_league:'Champions League ⭐',soccer_uefa_europa_league:'Europa League 🟠',soccer_netherlands_eredivisie:'Eredivisie 🇳🇱',soccer_portugal_primeira_liga:'Primeira Liga 🇵🇹',soccer_belgium_first_div:'Jupiler Pro League 🇧🇪',soccer_turkey_super_league:'Süper Lig 🇹🇷',soccer_scotland_premiership:'Scottish Prem. 🏴󠁧󠁢󠁳󠁣󠁴󠁿',soccer_austria_bundesliga:'Österreich BL 🇦🇹',soccer_greece_super_league:'Super League 🇬🇷',soccer_sweden_allsvenskan:'Allsvenskan 🇸🇪',soccer_norway_eliteserien:'Eliteserien 🇳🇴',soccer_denmark_superliga:'Superligaen 🇩🇰',soccer_finland_veikkausliiga:'Veikkausliiga 🇫🇮'};
 const LEAGUE_AVG={soccer_epl:2.7,soccer_spain_la_liga:2.5,soccer_italy_serie_a:2.6,soccer_germany_bundesliga:3.1,soccer_france_ligue_one:2.5,soccer_uefa_champs_league:2.8,soccer_uefa_europa_league:2.7,soccer_netherlands_eredivisie:3.1,soccer_portugal_primeira_liga:2.5,soccer_belgium_first_div:2.9,soccer_turkey_super_league:2.7,soccer_scotland_premiership:2.7,soccer_austria_bundesliga:3.0,soccer_greece_super_league:2.4,soccer_sweden_allsvenskan:2.7,soccer_norway_eliteserien:2.9,soccer_denmark_superliga:2.8,soccer_finland_veikkausliiga:2.6};
 // xG league averages (expected goals per team per game, top 5 from Understat, others estimated)
@@ -805,7 +814,7 @@ function simStats(h,a){
   return{home:{avgGoalsScored:rng(h+'hs',1.1,2.2),avgGoalsConceded:rng(h+'hc',0.7,1.8),form:gf(h+'f'),homeRecord:{w:seed(h+'hw')%8+3,d:seed(h+'hd')%5+1,l:seed(h+'hl')%5+1}},away:{avgGoalsScored:rng(a+'as',0.9,1.9),avgGoalsConceded:rng(a+'ac',0.9,2.0),form:gf(a+'f'),awayRecord:{w:seed(a+'aw')%6+1,d:seed(a+'ad')%4+1,l:seed(a+'al')%7+2}}};
 }
 
-function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache={},xgLeagueData=null){
+function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache={},xgLeagueData=null,fetchTime=new Date()){
   const ligaAvg=LEAGUE_AVG[league]||2.6,kickoff=new Date(game.commence_time);
   if(kickoff<new Date())return[];
   // Use real stats if available, otherwise simulate
@@ -871,7 +880,14 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realS
   }
   const results=[];
   const raw1x2={},rawOU={},rawBTTS={},rawAH={};
-  for(const bk of game.bookmakers||[]){
+  // Filter to Swedish bookmakers only
+  const filteredBookmakers=(game.bookmakers||[]).filter(bk=>isSwedishBk(bk.title));
+  // Console debug: log all bookmakers and their DC12 odds
+  if(game.bookmakers?.length){
+    const allBks=game.bookmakers.map(bk=>{const m1=bk.markets?.find(m=>m.key==='h2h');if(!m1)return null;const h=m1.outcomes.find(o=>o.name===game.home_team)?.price,d=m1.outcomes.find(o=>o.name==='Draw')?.price,a=m1.outcomes.find(o=>o.name===game.away_team)?.price;if(!h||!d||!a)return null;const p1=1/h,pX=1/d,p2=1/a,t=p1+pX+p2;const dc12=(1/((p1/t+p2/t))).toFixed(3);return{bk:bk.title,h,d,a,dc12,se:isSwedishBk(bk.title)};}).filter(Boolean);
+    if(allBks.length)console.log(`[Odds] ${game.home_team} vs ${game.away_team}\n`+allBks.map(x=>`  ${x.se?'✅':'❌'} ${x.bk}: 1=${x.h} X=${x.d} 2=${x.a} → DC12=${x.dc12}`).join('\n'));
+  }
+  for(const bk of filteredBookmakers){
     const m1=bk.markets?.find(m=>m.key==='h2h');
     if(m1){const hm=m1.outcomes.find(o=>o.name===game.home_team)?.price,dr=m1.outcomes.find(o=>o.name==='Draw')?.price,aw=m1.outcomes.find(o=>o.name===game.away_team)?.price;if(hm&&dr&&aw)raw1x2[bk.title]={home:hm,draw:dr,away:aw};}
     const mU=bk.markets?.find(m=>m.key==='totals');
@@ -895,7 +911,7 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realS
   const iPX = impliedProbs ? Math.round(impliedProbs.pX*1000)/10 : null;
   const iPA = impliedProbs ? Math.round(impliedProbs.pA*1000)/10 : null;
 
-  const base={gameId:game.id,homeTeam:game.home_team,awayTeam:game.away_team,league:LEAGUE_NAMES[league]||league,leagueKey:league,kickoff,stats,formScoreHome:P.fs(stats.home.form),formScoreAway:P.fs(stats.away.form),pH:Math.round(pH*1000)/10,pX:Math.round(pX*1000)/10,pA:Math.round(pA*1000)/10,lH:Math.round(lH*100)/100,lA:Math.round(lA*100)/100,modelTag,teamIdHome:cachedH?.teamId||null,teamIdAway:cachedA?.teamId||null,h2h:null,h2hLoaded:false,impliedPH:iPH,impliedPX:iPX,impliedPA:iPA,xgSource,thinData,nMatchesXG};
+  const base={gameId:game.id,homeTeam:game.home_team,awayTeam:game.away_team,league:LEAGUE_NAMES[league]||league,leagueKey:league,kickoff,stats,formScoreHome:P.fs(stats.home.form),formScoreAway:P.fs(stats.away.form),pH:Math.round(pH*1000)/10,pX:Math.round(pX*1000)/10,pA:Math.round(pA*1000)/10,lH:Math.round(lH*100)/100,lA:Math.round(lA*100)/100,modelTag,teamIdHome:cachedH?.teamId||null,teamIdAway:cachedA?.teamId||null,h2h:null,h2hLoaded:false,impliedPH:iPH,impliedPX:iPX,impliedPA:iPA,xgSource,thinData,nMatchesXG,fetchedAt:fetchTime};
   const push=(id,market,dcType,prob,bkOdds)=>{if(!bkOdds.length)return;const best=bkOdds.reduce((a,b)=>b.odds>a.odds?b:a);const vp=Math.round(P.val(best.odds,prob)*10)/10;results.push({...base,id,market,dcType,bestOdds:best.odds,bestBk:best.bk,trueOdds:Math.round((1/prob)*100)/100,valuePct:vp,modelProb:Math.round(prob*1000)/10,allBkOdds:bkOdds});};
   const mkBk=(rawSrc,fn,min,max)=>Object.keys(rawSrc).map(bk=>{const o=fn(rawSrc[bk]);return o&&o>=min&&o<=max?{bk,odds:o}:null;}).filter(Boolean);
   if(activeMarkets.includes('dc')&&Object.keys(raw1x2).length){
@@ -1204,6 +1220,31 @@ function toggleSFBtn(id, key, side) {
   updateSF(id);
 }
 
+async function refreshMatchOdds(gameId) {
+  const existing = state.matches.find(x => x.gameId === gameId);
+  if (!existing || !state.oddsKey) return;
+  const btnId = 'rmb-' + gameId.replace(/[^a-z0-9]/gi,'');
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div>'; }
+  try {
+    const activeMarkets=[...document.querySelectorAll('.market-check input:checked')].map(x=>x.value);
+    const mktParam=['h2h',...(activeMarkets.includes('ou25')?['totals']:[]),...(activeMarkets.includes('btts')?['btts']:[]),...(activeMarkets.includes('ah')?['spreads']:[])].join(',');
+    const r = await fetch(`https://api.the-odds-api.com/v4/sports/${existing.leagueKey}/events/${gameId}/odds/?apiKey=${state.oddsKey}&regions=eu&markets=${mktParam}&oddsFormat=decimal`);
+    if (!r.ok) { showToast('API-fel vid uppdatering','error'); return; }
+    const rem=r.headers.get('x-requests-remaining'),used=r.headers.get('x-requests-used');
+    if(rem!==null||used!==null) updateReqCounter(used,rem);
+    const gameData = await r.json();
+    const oddsMin=parseFloat(document.getElementById('oddsMin').value),oddsMax=parseFloat(document.getElementById('oddsMax').value);
+    const fetchTime = new Date();
+    const newMatches = processGame(gameData, existing.leagueKey, activeMarkets, oddsMin, oddsMax, getActiveModel(), realStatsCache, null, fetchTime);
+    state.matches = state.matches.filter(x => x.gameId !== gameId);
+    state.matches.push(...newMatches);
+    renderMatches();
+    showToast('🔄 Odds uppdaterade!');
+  } catch(e) { showToast('Fel: '+e.message,'error'); }
+  finally { if(btn){btn.disabled=false;btn.innerHTML='🔄';} }
+}
+
 async function fetchAllOdds(){
   if(location.protocol==='file:'){document.getElementById('matchList').innerHTML=`<div style="background:rgba(218,54,51,0.1);border:1px solid #da3633;border-radius:8px;padding:20px 24px;line-height:1.8"><div style="font-size:1.1rem;font-weight:700;color:#ff7b72;margin-bottom:10px">⚠️ Lokal server krävs</div><p style="color:var(--text);margin-bottom:12px">Öppna terminalen och kör:</p><div style="background:var(--surface2);border-radius:6px;padding:12px;font-family:monospace;font-size:0.9rem;color:var(--green-bright)">python3 -m http.server 8080</div><p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px">Öppna sedan <strong style="color:var(--blue-bright)">http://localhost:8080</strong></p></div>`;return;}
   if(!state.oddsKey){document.getElementById('key-banner').classList.add('show');showToast('API-nyckel saknas!','error');return;}
@@ -1253,7 +1294,8 @@ async function fetchAllOdds(){
       if(remaining!==null||used!==null) updateReqCounter(used,remaining);
       const data=await r.json();
       const xgData = xgLeagueCache[league] || null;
-      for(const game of data)allMatches.push(...processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache,xgData));
+      const fetchTime = new Date();
+      for(const game of data)allMatches.push(...processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realStatsCache,xgData,fetchTime));
     }catch(e){if(e.message==='Failed to fetch')corsErr=true;errors++;}
   }
   if(allMatches.filter(m=>m.valuePct>=5).length>0) playSound();state.matches=allMatches;state.lastUpdated=new Date();
@@ -1288,12 +1330,15 @@ function renderMatches(){
           ${m.valuePct>=10?`<span class="badge badge-green">🟢 +${m.valuePct}% STARKT</span>`:m.valuePct>=5?`<span class="badge badge-yellow">🟡 +${m.valuePct}% VÄRDE</span>`:`<span class="badge badge-gray">+${m.valuePct}%</span>`}
         </div>
         <div class="match-teams">${m.homeTeam} vs ${m.awayTeam}</div>
-        <div class="match-time">⏰ ${fmtTime(m.kickoff)} &nbsp;|&nbsp; 📈 Form: ${Math.round((m.formScoreHome+m.formScoreAway)/2)}/100</div>
+        <div class="match-time">⏰ ${fmtTime(m.kickoff)} &nbsp;|&nbsp; 📈 Form: ${Math.round((m.formScoreHome+m.formScoreAway)/2)}/100
+          ${m.fetchedAt?(()=>{const age=Math.round((Date.now()-new Date(m.fetchedAt))/60000);const stale=age>30;return`&nbsp;|&nbsp;<span style="font-size:0.72rem;color:${stale?'var(--red)':'var(--text-muted)'}${stale?';font-weight:600':''}">${stale?'⚠️ ':''}Odds: ${age}min sedan</span>`})():''}
+        </div>
       </div>
       <div class="match-right">
         <div class="odds-row"><span style="font-size:0.75rem;color:var(--text-muted)">Bästa odds</span><span class="odds-pill best">${m.bestOdds.toFixed(2)}</span></div>
         <div class="odds-row"><span style="font-size:0.75rem;color:var(--text-muted)">Modellodds</span><span class="odds-pill">${m.trueOdds.toFixed(2)}</span></div>
         <div class="value-pct ${m.valuePct>=10?'green':m.valuePct>=5?'yellow':'gray'}">+${m.valuePct}%</div>
+        <button id="rmb-${m.gameId.replace(/[^a-z0-9]/gi,'')}" class="btn btn-sm" style="padding:2px 7px;font-size:0.72rem" onclick="event.stopPropagation();refreshMatchOdds('${m.gameId}')" title="Uppdatera odds för denna match">🔄</button>
         <span class="chevron" id="chevron-${m.id}">▼</span>
       </div>
     </div>
