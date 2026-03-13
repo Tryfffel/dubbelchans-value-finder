@@ -928,7 +928,7 @@ function processGame(game,league,activeMarkets,oddsMin,oddsMax,activeModel,realS
   const iPX = impliedProbs ? Math.round(impliedProbs.pX*1000)/10 : null;
   const iPA = impliedProbs ? Math.round(impliedProbs.pA*1000)/10 : null;
 
-  const base={gameId:game.id,homeTeam:game.home_team,awayTeam:game.away_team,league:LEAGUE_NAMES[league]||league,leagueKey:league,kickoff,stats,formScoreHome:P.fs(stats.home.form),formScoreAway:P.fs(stats.away.form),pH:Math.round(pH*1000)/10,pX:Math.round(pX*1000)/10,pA:Math.round(pA*1000)/10,lH:Math.round(lH*100)/100,lA:Math.round(lA*100)/100,modelTag,teamIdHome:cachedH?.teamId||null,teamIdAway:cachedA?.teamId||null,h2h:null,h2hLoaded:false,impliedPH:iPH,impliedPX:iPX,impliedPA:iPA,xgSource,thinData,nMatchesXG,fetchedAt:fetchTime};
+  const base={gameId:game.id,homeTeam:game.home_team,awayTeam:game.away_team,league:LEAGUE_NAMES[league]||league,leagueKey:league,kickoff,stats,formScoreHome:P.fs(stats.home.form),formScoreAway:P.fs(stats.away.form),pH:Math.round(pH*1000)/10,pX:Math.round(pX*1000)/10,pA:Math.round(pA*1000)/10,lH:Math.round(lH*100)/100,lA:Math.round(lA*100)/100,modelTag,teamIdHome:cachedH?.teamId||null,teamIdAway:cachedA?.teamId||null,h2h:null,h2hLoaded:false,autoSF:null,autoSFLoaded:false,impliedPH:iPH,impliedPX:iPX,impliedPA:iPA,xgSource,thinData,nMatchesXG,fetchedAt:fetchTime};
   const push=(id,market,dcType,prob,bkOdds)=>{if(!bkOdds.length)return;const best=bkOdds.reduce((a,b)=>b.odds>a.odds?b:a);const vp=Math.round(P.val(best.odds,prob)*10)/10;results.push({...base,id,market,dcType,bestOdds:best.odds,bestBk:best.bk,trueOdds:Math.round((1/prob)*100)/100,valuePct:vp,modelProb:Math.round(prob*1000)/10,allBkOdds:bkOdds});};
   const mkBk=(rawSrc,fn,min,max)=>Object.keys(rawSrc).map(bk=>{const o=fn(rawSrc[bk]);return o&&o>=min&&o<=max?{bk,odds:o}:null;}).filter(Boolean);
   if(activeMarkets.includes('dc')&&Object.keys(raw1x2).length){
@@ -1203,13 +1203,19 @@ function sfDirection(dcType) {
 const SoftFactors = {
   get(id)     { return S.get('sf', {})[id] || { slider: 0 }; },
   set(id, d)  { const a = S.get('sf', {}); a[id] = d; S.set('sf', a); },
-  total(id, dcType) {
+  total(id, dcType, autoSF) {
     const d = this.get(id), dir = sfDirection(dcType);
     let t = parseFloat(d.slider) || 0;
     for (const btn of SF_BUTTONS) {
       const side = d[btn.key];
       if (side && dir !== 0)
         t += btn.homeEffect * (side === 'H' ? 1 : -1) * dir;
+    }
+    // Auto SF: home injuries hurt home side, away injuries help home side
+    if (autoSF && dir !== 0) {
+      const hc = autoSF.homeInjuries?.length || 0;
+      const ac = autoSF.awayInjuries?.length || 0;
+      t += (Math.min(ac * 2, 4) - Math.min(hc * 2, 4)) * dir;
     }
     return Math.max(-5, Math.min(5, t));
   }
@@ -1226,7 +1232,7 @@ function updateSF(id) {
     sfData[btn.key] = hActive ? 'H' : aActive ? 'A' : null;
   }
   SoftFactors.set(id, sfData);
-  const sfT = SoftFactors.total(id, m.dcType);
+  const sfT = SoftFactors.total(id, m.dcType, m.autoSF);
   const adjProb = Math.max(1, Math.min(99, m.modelProb + sfT));
   const newVal = Math.round(P.val(m.bestOdds, adjProb / 100) * 10) / 10;
   const sliderValEl = document.getElementById('sf-sliderval-' + id);
@@ -1243,6 +1249,71 @@ function toggleSFBtn(id, key, side) {
   if (side === 'H') { const was = hEl?.classList.contains('active-h'); hEl?.classList.toggle('active-h', !was); aEl?.classList.remove('active-a'); }
   else              { const was = aEl?.classList.contains('active-a'); aEl?.classList.toggle('active-a', !was); hEl?.classList.remove('active-h'); }
   updateSF(id);
+}
+
+// ============================================================
+// AUTO SOFT FACTOR — API-Football injuries/suspensions
+// ============================================================
+const TeamCache = {
+  get(name)     { return S.get('teamIds', {})[name.toLowerCase()] || null; },
+  set(name, id) { const a = S.get('teamIds', {}); a[name.toLowerCase()] = id; S.set('teamIds', a); }
+};
+
+async function fetchTeamId(teamName) {
+  const cached = TeamCache.get(teamName);
+  if (cached) return cached;
+  if (!state.footballKey) return null;
+  try {
+    const r = await fetch(`https://v3.football.api-sports.io/teams?search=${encodeURIComponent(teamName)}`, {
+      headers: { 'x-apisports-key': state.footballKey }
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    const id = d.response?.[0]?.team?.id || null;
+    if (id) TeamCache.set(teamName, id);
+    return id;
+  } catch { return null; }
+}
+
+async function fetchTeamInjuries(teamId) {
+  if (!state.footballKey || !teamId) return [];
+  const season = new Date().getMonth() >= 7 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  try {
+    const r = await fetch(`https://v3.football.api-sports.io/injuries?team=${teamId}&season=${season}`, {
+      headers: { 'x-apisports-key': state.footballKey }
+    });
+    if (!r.ok) return [];
+    const d = await r.json();
+    return (d.response || []).map(e => ({
+      name:   e.player?.name   || '?',
+      type:   e.player?.type   || 'Injury',
+      reason: e.player?.reason || ''
+    }));
+  } catch { return []; }
+}
+
+function renderAutoSFContent(id, autoSF, m) {
+  const el = document.getElementById('auto-sf-' + id);
+  if (!el) return;
+  if (!autoSF) {
+    el.innerHTML = '<div style="font-size:0.75rem;color:var(--text-muted);padding:4px 0">Klicka för att hämta skade/avstängningsdata automatiskt.</div>';
+    return;
+  }
+  const dir = sfDirection(m.dcType);
+  const { homeInjuries, awayInjuries } = autoSF;
+  const hc = homeInjuries.length, ac = awayInjuries.length;
+  const autoAdj = dir !== 0 ? (Math.min(ac * 2, 4) - Math.min(hc * 2, 4)) * dir : 0;
+  const fmtPlayers = (inj) => inj.length === 0
+    ? '<span style="color:var(--green-bright);font-size:0.74rem">✅ Inga kända skador</span>'
+    : inj.slice(0, 4).map(p => `<span style="font-size:0.73rem;color:#ff7b72">🤕 ${p.name}</span>`).join(' · ')
+      + (inj.length > 4 ? `<span style="font-size:0.73rem;color:var(--text-muted)"> +${inj.length - 4} fler</span>` : '');
+  el.innerHTML = `
+    <div style="background:rgba(218,54,51,0.07);border:1px solid rgba(218,54,51,0.22);border-radius:6px;padding:8px 10px;margin-bottom:8px">
+      <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">🤖 Auto SF — Skador &amp; Avstängningar</div>
+      <div style="margin-bottom:5px"><span style="font-size:0.73rem;color:var(--text-muted)">🏠 ${m.homeTeam}:</span> ${fmtPlayers(homeInjuries)}</div>
+      <div style="margin-bottom:${dir !== 0 && (hc > 0 || ac > 0) ? '5' : '0'}px"><span style="font-size:0.73rem;color:var(--text-muted)">✈️ ${m.awayTeam}:</span> ${fmtPlayers(awayInjuries)}</div>
+      ${dir !== 0 && (hc > 0 || ac > 0) ? `<div style="font-size:0.73rem;padding-top:4px;border-top:1px solid rgba(218,54,51,0.2)">Auto-justering: <strong style="color:${autoAdj > 0 ? 'var(--green-bright)' : autoAdj < 0 ? '#ff7b72' : 'var(--text-muted)'}">${autoAdj > 0 ? '+' : ''}${autoAdj.toFixed(1)}pp</strong> <span style="color:var(--text-muted)">(ingår i Justerat)</span></div>` : ''}
+    </div>`;
 }
 
 async function refreshMatchOdds(gameId) {
@@ -1433,12 +1504,18 @@ function renderMatches(){
       </div>`:''}
       ${(()=>{
         const sfData=SoftFactors.get(m.id);
-        const sfT=SoftFactors.total(m.id,m.dcType);
+        const sfT=SoftFactors.total(m.id,m.dcType,m.autoSF);
         const sfDir=sfDirection(m.dcType);
         const adjProb=Math.max(1,Math.min(99,m.modelProb+sfT));
         const newVal=Math.round(P.val(m.bestOdds,adjProb/100)*10)/10;
+        const autoLoaded=m.autoSFLoaded;
+        const autoHint=!state.footballKey?'<div style="font-size:0.74rem;color:var(--text-muted);margin-bottom:8px">💡 Lägg till API-Football-nyckel för automatisk skadedata.</div>'
+          :autoLoaded?''
+          :'<div id="auto-sf-'+m.id+'" style="margin-bottom:8px"><div style="font-size:0.74rem;color:var(--text-muted)">Expandera kortet för att hämta skadedata automatiskt.</div></div>';
+        const autoBlock=autoLoaded?`<div id="auto-sf-${m.id}" style="margin-bottom:8px"></div>`:'';
         return `<div class="sf-panel" style="margin-top:14px">
           <div class="sf-panel-title">🎛️ Soft Factor-justering <span class="badge badge-purple" style="font-size:0.6rem;padding:1px 6px">Tony Bloom</span></div>
+          ${autoLoaded?autoBlock:autoHint}
           <div class="sf-slider-row">
             <span style="font-size:0.78rem;color:var(--text-muted)">Justering:</span>
             <input type="range" id="sf-slider-${m.id}" min="-5" max="5" step="0.5" value="${sfData.slider||0}" oninput="updateSF('${m.id}')">
@@ -1454,22 +1531,53 @@ function renderMatches(){
       })()}
     </div>
   </div>`).join('');
+  // Re-populate auto-sf divs for already-loaded injury data
+  for (const m of ms) {
+    if (m.autoSFLoaded && m.autoSF) {
+      renderAutoSFContent(m.id, m.autoSF, m);
+    }
+  }
 }
 
 async function toggleDetail(id){
   document.getElementById(`detail-${id}`).classList.toggle('open');
   document.getElementById(`chevron-${id}`).classList.toggle('open');
   const isOpen = document.getElementById(`detail-${id}`).classList.contains('open');
-  if (isOpen) {
-    const m = state.matches.find(x => x.id === id);
-    if (m && !m.h2hLoaded && state.footballKey && m.teamIdHome && m.teamIdAway) {
-      const h2hEl = document.getElementById(`h2h-${id}`);
-      if (h2hEl) h2hEl.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem">Hämtar H2H...</span>';
-      const fixtures = await fetchH2H(m.teamIdHome, m.teamIdAway);
-      m.h2h = fixtures;
-      m.h2hLoaded = true;
-      renderH2HSection(id, fixtures, m);
-    }
+  if (!isOpen) return;
+  const m = state.matches.find(x => x.id === id);
+  if (!m || !state.footballKey) return;
+
+  // Lazy-load H2H
+  if (!m.h2hLoaded && m.teamIdHome && m.teamIdAway) {
+    const h2hEl = document.getElementById(`h2h-${id}`);
+    if (h2hEl) h2hEl.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem">Hämtar H2H...</span>';
+    const fixtures = await fetchH2H(m.teamIdHome, m.teamIdAway);
+    m.h2h = fixtures;
+    m.h2hLoaded = true;
+    renderH2HSection(id, fixtures, m);
+  }
+
+  // Lazy-load auto SF injuries — all matches sharing the same gameId share autoSF
+  if (!m.autoSFLoaded) {
+    const autoEl = document.getElementById('auto-sf-' + id);
+    if (autoEl) autoEl.innerHTML = '<div style="font-size:0.74rem;color:var(--text-muted);padding:4px 0">⏳ Hämtar skadedata...</div>';
+    // Find or resolve team IDs
+    let homeId = m.teamIdHome, awayId = m.teamIdAway;
+    if (!homeId) homeId = await fetchTeamId(m.homeTeam);
+    if (!awayId) awayId = await fetchTeamId(m.awayTeam);
+    const [homeInjuries, awayInjuries] = await Promise.all([
+      fetchTeamInjuries(homeId),
+      fetchTeamInjuries(awayId)
+    ]);
+    const autoSF = { homeInjuries, awayInjuries };
+    // Apply to ALL bets for this game so they all share the same data
+    state.matches.filter(x => x.gameId === m.gameId).forEach(x => {
+      x.autoSF = autoSF;
+      x.autoSFLoaded = true;
+    });
+    renderAutoSFContent(id, autoSF, m);
+    // Refresh probability displays for this bet
+    updateSF(id);
   }
 }
 
